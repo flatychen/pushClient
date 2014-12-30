@@ -32,7 +32,7 @@ public class AcceptHandler {
 		channel.configureBlocking(false);
 		// 在和服务端连接成功之后，为了可以接收到服务端的信息，需要给通道设置读的权限。
 		channel.register(selector, SelectionKey.OP_READ);
-	   // channel.register(selector, SelectionKey.OP_WRITE);
+//	    channel.register(selector, SelectionKey.OP_WRITE);
 
 	}
 
