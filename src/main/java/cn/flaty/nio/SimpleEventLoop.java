@@ -6,29 +6,36 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
-import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class SimpleEventLoop{
-	
+import cn.flaty.utils.AssertUtils;
+
+public class SimpleEventLoop {
+
 	private InetSocketAddress socket;
-
+	
+	/**
+	 * accept
+	 */
 	private AcceptHandler accept;
-	
+
+	/**
+	 * io handlers
+	 */
 	private ReadWriteHandler readWrite;
-	
-	private Selector selector;
-	
-	
+
+	private volatile Selector selector;
+
+	private volatile SelectionKey key;
+
 	public SimpleEventLoop(String host, int port) {
 		super();
-		this.socket = new InetSocketAddress(host,port);
-		this.accept = new AcceptHandler();
-		this.readWrite = new ReadWriteHandler();
+		this.socket = new InetSocketAddress(host, port);
 	}
 
-	
-
-	private void openChannel() throws IOException {
+	public void openChannel() throws IOException {
+		this.validate();
 		// 获得一个Socket通道
 		SocketChannel channel = SocketChannel.open();
 		// 设置通道为非阻塞
@@ -40,25 +47,37 @@ public class SimpleEventLoop{
 		channel.connect(this.socket);
 		// 将通道管理器和该通道绑定，并为该通道注册SelectionKey.OP_CONNECT事件。
 		channel.register(selector, SelectionKey.OP_CONNECT);
+
 	}
 
+	/**
+	 * FIXME cancle write key bug?
+	 * 
+	 * @throws IOException
+	 */
 	public void connect() throws IOException {
-		this.openChannel();
 		// 轮询访问selector
-		while (true) {
-			selector.select();
+		while (selector.select() > 0) {
 			// 获得selector中选中的项的迭代器
-			Iterator<SelectionKey> ite = this.selector.selectedKeys().iterator();
-			while (ite.hasNext()) {
-				SelectionKey key = (SelectionKey) ite.next();
+			Iterator<SelectionKey> keys = this.selector.selectedKeys()
+					.iterator();
+			while (keys.hasNext()) {
+				key = keys.next();
 				// 删除已选的key,以防重复处理
-				ite.remove();
-				if (key.isConnectable()) {
-					accept.connect(selector, key);
-				} else if (key.isReadable()) {
-					readWrite.read(selector ,key);
-				} else if (key.isWritable()) {
-					readWrite.write(selector,key);
+				keys.remove();
+
+				if (key.isValid()) {
+					if (key.isConnectable()) {
+						accept.connect(selector, key);
+					} else if (key.isReadable()) {
+						readWrite.doRead(key);
+					} else if (key.isWritable() ) {
+						
+						//立即取消注册 
+						key.cancel();
+						readWrite.doWrite(key);
+					
+					}
 				}
 
 			}
@@ -66,11 +85,30 @@ public class SimpleEventLoop{
 		}
 	}
 
-
-
-
+	private void validate() {
+		AssertUtils.notNull(accept, "----> accept 属性不能主空");
+		AssertUtils.notNull(readWrite, "----> readWrite 属性不能主空");
+		
+	}
 
 	
 	
+	public Selector getSelector() {
+		return selector;
+	}
+
+
+
+	public void setAccept(AcceptHandler accept) {
+		this.accept = accept;
+	}
+
+
+	public void setReadWrite(ReadWriteHandler readWrite) {
+		this.readWrite = readWrite;
+	}
 	
+	
+	
+
 }

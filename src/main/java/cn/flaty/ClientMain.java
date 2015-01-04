@@ -10,7 +10,9 @@ import java.nio.charset.Charset;
 import java.util.Iterator;
 import java.util.Properties;
 
+import cn.flaty.nio.ReadWriteHandler;
 import cn.flaty.nio.SimpleEventLoop;
+import cn.flaty.services.PushService;
 
 public class ClientMain {
 	
@@ -39,11 +41,12 @@ public class ClientMain {
 		host = p.getProperty("local.host");
 		port = Integer.parseInt(p.getProperty("local.port"));
 		threads = Integer.parseInt(p.getProperty("local.threads"));
-		SimpleEventLoop client = new SimpleEventLoop(host,port);
-		try {
-			client.connect();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		
+		
+		
+		
+		PushService pushService = new PushService();
+		pushService.conn(host, port);
+		
 	}
 }

@@ -2,20 +2,24 @@ package cn.flaty.nio;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
+import java.nio.charset.Charset;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.commons.lang.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.flaty.PushConstant;
-import cn.flaty.PushFrameParser;
 import cn.flaty.pushFrame.FrameHead;
+import cn.flaty.pushFrame.SimplePushFrame;
 import cn.flaty.pushFrame.SimplePushHead;
+import cn.flaty.services.PushService;
 import cn.flaty.utils.ByteUtil;
+import cn.flaty.utils.CharsetUtil;
 
 public class ReadWriteHandler {
 	
@@ -23,42 +27,101 @@ public class ReadWriteHandler {
 	
 	private static int BUFFER_SIZE = 4096;
 	
+	
+	
 	private FrameHead frameHeader = null;
 	
 	private ByteBuffer readBuf = ByteBuffer.allocate(BUFFER_SIZE);
 	
 	private ByteBuffer writeBuf = ByteBuffer.allocate(BUFFER_SIZE);
 	
-
-	public ReadWriteHandler() {
-		this(new SimplePushHead());
+	
+	/**
+	 * 选择器，用于注册
+	 */
+	private Selector selector;
+	
+	/**
+	 * socke通道
+	 */
+	private SocketChannel channel;
+	
+	/**
+	 * 业务逻辑处理
+	 */
+	private PushService pushService ;
+	
+	/**
+	 * nio 事件循环
+	 */
+	private SimpleEventLoop eventLoop;
+	
+	public ReadWriteHandler(PushService pushService) {
+		this(pushService,new SimplePushHead());
 	}
 	
 
-	public ReadWriteHandler(FrameHead frameHeader) {
+	public ReadWriteHandler(PushService pushService,FrameHead frameHeader) {
 		super();
+		this.pushService = pushService;
 		this.frameHeader = frameHeader;
+		
 	}
-
-	public void write(Selector selector, SelectionKey key) {
-		SocketChannel socketChannel = this.getChannel(key);
-		writeBuf.clear();
-		String s = RandomStringUtils.randomAlphabetic(20);
-		s = " 中国人 ";
-		byte [] frame = encodeFrame(s);
-		writeBuf.put(frame);
-		writeBuf.flip();
+	
+	public void startConn(String host,int port){
+		eventLoop = new SimpleEventLoop(host,port);
 		try {
-			int r = socketChannel.write(writeBuf);
+			eventLoop.setAccept(new AcceptHandler());
+			eventLoop.setReadWrite(this);
+			eventLoop.openChannel();
+			this.selector = eventLoop.getSelector();
+			
+			// 阻塞等待
+			new Runnable() {
+				@Override
+				public void run() {
+					try {
+						eventLoop.openChannel();
+						eventLoop.connect();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					
+				}
+			};
+			
+			
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		
+	}
+	
+	
+	public void writeMsg(String msg){
 		try {
-			Thread.sleep(3000000);
-		} catch (InterruptedException e) {
+			channel.register(selector, SelectionKey.OP_WRITE);
+			byte [] frame = encodeFrame(msg);
+			writeBuf.put(frame);
+		} catch (ClosedChannelException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	
+	public void doWrite(SelectionKey key) {
+		this.initChannel(key);
+		writeBuf.flip();
+		if( writeBuf.remaining() == 0 ){
+			log.warn("----> writeBuf 无内容发送 ");
+			return ;
+		}
+		try {
+			int r = channel.write(writeBuf);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		writeBuf.clear();
 	}
 	
 	
@@ -85,8 +148,9 @@ public class ReadWriteHandler {
 		return frame;
 	}
 	
-	public void read(Selector selector, SelectionKey key) throws IOException {
-		SocketChannel channel = this.getChannel(key);
+	public void doRead( SelectionKey key) throws IOException {
+		
+		this.initChannel(key);
 		
 		readBuf.clear();
 		if(channel.read(readBuf) == -1 ){
@@ -94,28 +158,48 @@ public class ReadWriteHandler {
 		}
 		
 		// 切包
-		byte [] frame = this.splitFrame();
+		byte [] frameBytes = this.splitFrame();
+		SimplePushFrame frame = new SimplePushFrame(frameHeader, frameBytes);
 		
-		// 解析包头
-		byte [] body = this.dencodeFrame(frame);
+		// 解包，得到内容
+		String s = this.dencodeFrame(frame);
 		
-		
+		pushService.receiveMsg(s);
 		
 		channel.register(selector, SelectionKey.OP_READ);
 	}
 
 
 
-	private byte[] dencodeFrame(byte[] frame) {
-		head = new byte[frameHead.headLength()];
-		body = new byte[frame.length - frameHead.headLength() ];
-		byte head[] = 
-		return null;
+	private String dencodeFrame(SimplePushFrame frame) {
+		byte charsetType = frame.getCharsetType();
+		String s = null;
+		byte [] _b = frame.getBody();
+		switch (charsetType) {
+		case 0:
+			s = new String(_b);
+			break;
+		case 1:
+			s = new String(_b , CharsetUtil.UTF_8);
+			break;
+		case 2:
+			s = new String(_b , CharsetUtil.US_ASCII);
+			break;
+		case 3:
+			s = new String(_b , CharsetUtil.GBK);
+			break;
+		case 4:
+			s = new String(_b , CharsetUtil.GB2312);
+			break;
+		}
+		return s;
 	}
 
 
-	private SocketChannel getChannel(SelectionKey key){
-		return  (SocketChannel)key.channel();
+	private void initChannel(SelectionKey key){
+		if(channel == null){
+			this.channel = (SocketChannel)key.channel();
+		}
 	}
 	
 	
@@ -125,7 +209,7 @@ public class ReadWriteHandler {
 	 * FIXME 扩展buf
 	 * @return
 	 */
-	public byte[] splitFrame(){
+	private byte[] splitFrame(){
 		readBuf.flip();
 		
 		// 
@@ -183,7 +267,6 @@ public class ReadWriteHandler {
 		
 		byte [] frame  =  new byte[bytesToRead];
 		readBuf.get(frame);
-//		System.out.println(Arrays.toString(frame));
 		return frame;
 		
 		

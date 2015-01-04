@@ -20,19 +20,28 @@ import com.alibaba.fastjson.JSON;
 
 public class AcceptHandler {
 
+	
+	private Selector selector;
+	
+	
+	private SocketChannel channel;
+	
 	private Logger log = LoggerFactory.getLogger(AcceptHandler.class);
 
-	public void connect(Selector selector, SelectionKey key) throws IOException {
-		SocketChannel channel = (SocketChannel) key.channel();
+	public void connect(Selector s, SelectionKey key) throws IOException {
+		this.selector = s;
+		this.channel = (SocketChannel) key.channel();
+		
 		// 如果正在连接，则完成连接
 		if (channel.isConnectionPending()) {
 			channel.finishConnect();
 		}
 		// 设置成非阻塞
 		channel.configureBlocking(false);
+		
 		// 在和服务端连接成功之后，为了可以接收到服务端的信息，需要给通道设置读的权限。
-		channel.register(selector, SelectionKey.OP_READ);
-		//channel.register(selector, SelectionKey.OP_WRITE);
+//		channel.register(selector, SelectionKey.OP_READ);
+		channel.register(selector, SelectionKey.OP_WRITE);
 
 	}
 
