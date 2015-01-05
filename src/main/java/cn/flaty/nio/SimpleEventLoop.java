@@ -9,12 +9,20 @@ import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import cn.flaty.nio.AcceptHandler.AfterAcceptListener;
 import cn.flaty.utils.AssertUtils;
 
 public class SimpleEventLoop {
 
+	private Logger log = LoggerFactory.getLogger(SimpleEventLoop.class);
+
+	private volatile boolean isEstablish = false;
+
 	private InetSocketAddress socket;
-	
+
 	/**
 	 * accept
 	 */
@@ -29,9 +37,9 @@ public class SimpleEventLoop {
 
 	private volatile SelectionKey key;
 
-	public SimpleEventLoop(String host, int port) {
+	public SimpleEventLoop(InetSocketAddress socket) {
 		super();
-		this.socket = new InetSocketAddress(host, port);
+		this.socket = socket;
 	}
 
 	public void openChannel() throws IOException {
@@ -55,7 +63,7 @@ public class SimpleEventLoop {
 	 * 
 	 * @throws IOException
 	 */
-	public void connect() throws IOException {
+	public void eventLoop() throws IOException {
 		// 轮询访问selector
 		while (selector.select() > 0) {
 			// 获得selector中选中的项的迭代器
@@ -68,16 +76,33 @@ public class SimpleEventLoop {
 
 				if (key.isValid()) {
 					if (key.isConnectable()) {
-						accept.connect(selector, key);
+
+						AfterAcceptListener listener = readWrite
+								.getAfterAcceptListener();
+						try {
+							accept.connect(selector, key);
+						} catch (Exception e) {
+							log.error("---->"+e.getMessage());
+							key.cancel();
+							selector.close();
+							listener.fail();
+							return;
+						}
+
+						this.initReadWriteHandler();
+						listener.success();
+						
+
 					} else if (key.isReadable()) {
 						readWrite.doRead(key);
-					} else if (key.isWritable() ) {
-						
-						//立即取消注册 
-						key.cancel();
-						readWrite.doWrite(key);
-					
 					}
+
+//					else if (key.isWritable()) {
+//						key.cancel();
+//					
+//
+//					}
+
 				}
 
 			}
@@ -85,30 +110,31 @@ public class SimpleEventLoop {
 		}
 	}
 
+	private void initReadWriteHandler() {
+		this.readWrite.setSelector(selector);
+		this.readWrite.setChannel(key.channel());
+	}
+
 	private void validate() {
 		AssertUtils.notNull(accept, "----> accept 属性不能主空");
 		AssertUtils.notNull(readWrite, "----> readWrite 属性不能主空");
-		
+
 	}
-
-	
-	
-	public Selector getSelector() {
-		return selector;
-	}
-
-
 
 	public void setAccept(AcceptHandler accept) {
 		this.accept = accept;
 	}
 
-
 	public void setReadWrite(ReadWriteHandler readWrite) {
 		this.readWrite = readWrite;
 	}
-	
-	
-	
+
+	public boolean isConnect() {
+		return this.isEstablish;
+	}
+
+	public void setConnect(boolean isEstablish) {
+		this.isEstablish = isEstablish;
+	}
 
 }

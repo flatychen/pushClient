@@ -44,9 +44,8 @@ public class ClientMain {
 		
 		
 		
-		
 		PushService pushService = new PushService();
-		pushService.conn(host, port);
+		pushService.connect(host, port);
 		
 	}
 }
