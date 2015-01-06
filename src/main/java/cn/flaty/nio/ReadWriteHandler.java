@@ -14,42 +14,37 @@ import org.slf4j.LoggerFactory;
 
 import cn.flaty.nio.AcceptHandler.AfterAcceptListener;
 import cn.flaty.pushFrame.FrameHead;
-import cn.flaty.pushFrame.SimplePushFrame;
+import cn.flaty.pushFrame.SimplePushInFrame;
 import cn.flaty.pushFrame.SimplePushHead;
+import cn.flaty.pushFrame.SimplePushOutFrame;
 import cn.flaty.services.PushService;
+import cn.flaty.utils.ByteBufUtil;
 import cn.flaty.utils.CharsetUtil;
 
-public class ReadWriteHandler implements Runnable{
+public class ReadWriteHandler implements Runnable {
 
-	
 	private Logger log = LoggerFactory.getLogger(ReadWriteHandler.class);
 
-	private static int BUFFER_SIZE = 4096;
+	private FrameHead frameHeader;
 
-	private FrameHead frameHeader = null;
+	private ByteBuf readBuf;
 
-	private ByteBuffer readBuf = ByteBuffer.allocate(BUFFER_SIZE);
+	private ByteBuf writeBuf;
 
-	private ByteBuffer writeBuf = ByteBuffer.allocate(BUFFER_SIZE);
-	
-	
-	
-	
-	
 	/**
 	 * 连接监听器
 	 */
-	private AfterAcceptListener afterAcceptListener ;
-	
+	private AfterAcceptListener afterAcceptListener;
+
 	/**
 	 * 读通道监听器
 	 */
-	private ChannelReadListener channelReadListener ;
-	
+	private ChannelReadListener channelReadListener;
+
 	/**
 	 * 写通道监听器
 	 */
-	private ChannelWriteListener channelWriteListener ;
+	private ChannelWriteListener channelWriteListener;
 
 	/**
 	 * 选择器，用于注册
@@ -82,74 +77,76 @@ public class ReadWriteHandler implements Runnable{
 
 	}
 
-	public void InitEventLoop(String host, int port){
+	public void InitEventLoop(String host, int port) {
 		eventLoop = new SimpleEventLoop(new InetSocketAddress(host, port));
 		eventLoop.setAccept(new AcceptHandler());
 		eventLoop.setReadWrite(this);
+		this.readBuf = new SimpleByteBuf(5);
+		this.writeBuf = new SimpleByteBuf(20);
+	}
+
+	public void doWrite(String msg) {
+		
+		SimplePushOutFrame frame = new SimplePushOutFrame(frameHeader, msg.getBytes());
+		writeBuf.put(frame.getLength());
+		writeBuf.put(frame.getHead());
+		writeBuf.put(frame.getBody());
+
+		writeBuf.flip();
+		try {
+			// int r = channel.write(writeBuf);
+			this.write(writeBuf);
+		} catch (Exception e) {
+			this.channelWriteListener.fail();
+			log.error("---->" + e.getMessage());
+			e.printStackTrace();
+		}
 
 	}
 
+	public void write( ByteBuf buf)
+			throws IOException {
+		channel.write(buf.nioBuffer());
+	}
 
-	public void doWrite(String msg) {
-		writeBuf.clear();
-		
-		byte[] frame = encodeFrame(msg);
-		
-		writeBuf.put(frame);
-		
-		writeBuf.flip();
-		try {
-			int r = channel.write(writeBuf);
-			channel.register(selector, SelectionKey.OP_READ);
-		} catch (Exception e) {
-			this.channelWriteListener.fail();
-			log.error("---->"+e.getMessage());
-			e.printStackTrace();
+	public void read(ByteBuf buf)
+			throws IOException {
+
+		if (buf.nioBufferSize() > 1 ){
+			ByteBuffer buffers [] = buf.nioBuffers();
+			int byteToRead = 0;
+			for (ByteBuffer byteBuffer : buffers) {
+				//if(byteBuffer.r)
+				byteToRead = channel.read(byteBuffer);
+				buf.position(buf.position()+byteToRead);
+			}
+		}else{
+			channel.read(buf.nioBuffer());
 		}
 		
 	}
 
-	private byte[] encodeFrame(String s) {
-		byte[] body = s.getBytes();
-		int bodyLength = body.length;
-		byte[] frame = new byte[bodyLength + frameHeader.byteLength()
-				+ frameHeader.headLength()];
 
-		// 添加长度
-		byte[] header_len = frameHeader.intToBytes(bodyLength);
-		System.arraycopy(header_len, 0, frame, 0, frameHeader.byteLength());
-
-		// 添加包头，4字节
-		byte[] header = new byte[frameHeader.headLength()];
-		// utf 编码
-		header[1] = 1;
-		System.arraycopy(header, 0, frame, frameHeader.byteLength(),
-				frameHeader.headLength());
-
-		// 添加内容
-		System.arraycopy(body, 0, frame,
-				frameHeader.byteLength() + frameHeader.headLength(), bodyLength);
-
-		return frame;
-	}
-
-	public void doRead(SelectionKey key){
-		readBuf.clear();
-		
+	public void doRead(SelectionKey key) {
 		try {
-			channel.read(readBuf);
+			this.read(readBuf);
+			// channel.read(readBuf);
 		} catch (IOException e) {
 			this.channelReadListener.fail();
-			log.error("---->"+e.getMessage());
+			log.error("---->" + e.getMessage());
 			e.printStackTrace();
 		}
 
 		// 切包
 		byte[] frameBytes = this.splitFrame();
-		SimplePushFrame frame = new SimplePushFrame(frameHeader, frameBytes);
+		if(frameBytes == null){
+			return;
+		}
+		
+		SimplePushInFrame frame = new SimplePushInFrame(frameHeader, frameBytes);
 
 		// 解包，得到内容
-		String s = this.dencodeFrame(frame);
+		String s = frame.getBody();
 
 		pushService.receiveMsg(s);
 
@@ -157,34 +154,11 @@ public class ReadWriteHandler implements Runnable{
 			channel.register(selector, SelectionKey.OP_READ);
 		} catch (ClosedChannelException e) {
 			this.afterAcceptListener.fail();
-			log.error("---->"+e.getMessage());
+			log.error("---->" + e.getMessage());
 			e.printStackTrace();
 		}
 	}
 
-	private String dencodeFrame(SimplePushFrame frame) {
-		byte charsetType = frame.getCharsetType();
-		String s = null;
-		byte[] _b = frame.getBody();
-		switch (charsetType) {
-		case 0:
-			s = new String(_b);
-			break;
-		case 1:
-			s = new String(_b, CharsetUtil.UTF_8);
-			break;
-		case 2:
-			s = new String(_b, CharsetUtil.US_ASCII);
-			break;
-		case 3:
-			s = new String(_b, CharsetUtil.GBK);
-			break;
-		case 4:
-			s = new String(_b, CharsetUtil.GB2312);
-			break;
-		}
-		return s;
-	}
 
 	/**
 	 * 
@@ -193,7 +167,7 @@ public class ReadWriteHandler implements Runnable{
 	 * @return
 	 */
 	private byte[] splitFrame() {
-		readBuf.flip();
+		
 
 		//
 		// 拆包开始;
@@ -201,14 +175,16 @@ public class ReadWriteHandler implements Runnable{
 		// 否则，一直读等到包头长度大于为止;
 		//
 		int bytesToRead = 0;
-
+		// 反转buf
+		readBuf.flip();
 		if (readBuf.remaining() > frameHeader.byteLength()) {
 			// 必须读到包的长度字节
 
 			byte[] frameLengthBytes = new byte[frameHeader.byteLength()];
 			readBuf.get(frameLengthBytes);
 			// 包长度大小
-			bytesToRead = frameHeader.bytesToInt(frameLengthBytes) + frameHeader.headLength();
+			bytesToRead = frameHeader.bytesToInt(frameLengthBytes)
+					+ frameHeader.headLength();
 
 			if (readBuf.remaining() < bytesToRead) {
 				// 没有完整读到所有包的内容,应继续读取
@@ -219,16 +195,21 @@ public class ReadWriteHandler implements Runnable{
 					// 注意后期抽象
 					int oldBufLength = readBuf.capacity();
 					int newBufLength = bytesToRead + frameHeader.byteLength();
-					ByteBuffer newBuffer = ByteBuffer
-							.allocateDirect(newBufLength);
+					
+					readBuf.position(readBuf.limit());
+					
+					ByteBuf newBuffer = ByteBufUtil.wrapByteBuf(newBufLength - oldBufLength, readBuf);
+					
+				//	ByteBuffer newBuffer = ByteBuffer
+				//			.allocateDirect(newBufLength);
 
-					readBuf.position(0);
-					newBuffer.put(readBuf);
+					//readBuf.position(0);
+					// newBuffer.put(readBuf);
 
-					readBuf = newBuffer;
+					 readBuf = newBuffer;
 
-					readBuf.position(oldBufLength);
-					readBuf.limit(newBufLength);
+					//readBuf.position(oldBufLength);
+					//readBuf.limit(newBufLength);
 
 					return null;
 				}
@@ -246,7 +227,7 @@ public class ReadWriteHandler implements Runnable{
 			return null;
 		}
 
-		// 拆包完毕
+		// 拆包完毕,已读一个完整的frame
 
 		byte[] frame = new byte[bytesToRead];
 		readBuf.get(frame);
@@ -262,8 +243,6 @@ public class ReadWriteHandler implements Runnable{
 	public void setChannel(SelectableChannel schannel) {
 		this.channel = (SocketChannel) schannel;
 	}
-
-
 
 	@Override
 	public void run() {
@@ -287,7 +266,8 @@ public class ReadWriteHandler implements Runnable{
 		return channelWriteListener;
 	}
 
-	public void setChannelWriteListener(ChannelWriteListener channelWriteListener) {
+	public void setChannelWriteListener(
+			ChannelWriteListener channelWriteListener) {
 		this.channelWriteListener = channelWriteListener;
 	}
 
@@ -299,16 +279,16 @@ public class ReadWriteHandler implements Runnable{
 			AcceptHandler.AfterAcceptListener afterAcceptListener) {
 		this.afterAcceptListener = afterAcceptListener;
 	}
-	
-	
-	public static interface ChannelReadListener{
+
+	public static interface ChannelReadListener {
 		void success();
+
 		void fail();
 	}
 
-	
-	public static interface ChannelWriteListener{
+	public static interface ChannelWriteListener {
 		void success();
+
 		void fail();
 	}
 }
