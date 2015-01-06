@@ -3,20 +3,20 @@ package cn.flaty.nio;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.Callable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.flaty.nio.AcceptHandler.AfterAcceptListener;
 import cn.flaty.pushFrame.FrameHead;
 import cn.flaty.pushFrame.SimplePushFrame;
 import cn.flaty.pushFrame.SimplePushHead;
 import cn.flaty.services.PushService;
-import cn.flaty.utils.ByteUtil;
 import cn.flaty.utils.CharsetUtil;
 
 public class ReadWriteHandler implements Runnable{
@@ -33,7 +33,23 @@ public class ReadWriteHandler implements Runnable{
 	private ByteBuffer writeBuf = ByteBuffer.allocate(BUFFER_SIZE);
 	
 	
-	private AcceptHandler.AfterAcceptListener afterAcceptListener ;
+	
+	
+	
+	/**
+	 * 连接监听器
+	 */
+	private AfterAcceptListener afterAcceptListener ;
+	
+	/**
+	 * 读通道监听器
+	 */
+	private ChannelReadListener channelReadListener ;
+	
+	/**
+	 * 写通道监听器
+	 */
+	private ChannelWriteListener channelWriteListener ;
 
 	/**
 	 * 选择器，用于注册
@@ -84,7 +100,10 @@ public class ReadWriteHandler implements Runnable{
 		writeBuf.flip();
 		try {
 			int r = channel.write(writeBuf);
+			channel.register(selector, SelectionKey.OP_READ);
 		} catch (Exception e) {
+			this.channelWriteListener.fail();
+			log.error("---->"+e.getMessage());
 			e.printStackTrace();
 		}
 		
@@ -97,10 +116,10 @@ public class ReadWriteHandler implements Runnable{
 				+ frameHeader.headLength()];
 
 		// 添加长度
-		byte[] header_len = ByteUtil.intToByteArray(bodyLength);
+		byte[] header_len = frameHeader.intToBytes(bodyLength);
 		System.arraycopy(header_len, 0, frame, 0, frameHeader.byteLength());
 
-		// 添加帧头，4字节
+		// 添加包头，4字节
 		byte[] header = new byte[frameHeader.headLength()];
 		// utf 编码
 		header[1] = 1;
@@ -114,10 +133,15 @@ public class ReadWriteHandler implements Runnable{
 		return frame;
 	}
 
-	public void doRead(SelectionKey key) throws IOException {
+	public void doRead(SelectionKey key){
 		readBuf.clear();
-		if (channel.read(readBuf) == -1) {
-			throw new IOException("----> 读取失败");
+		
+		try {
+			channel.read(readBuf);
+		} catch (IOException e) {
+			this.channelReadListener.fail();
+			log.error("---->"+e.getMessage());
+			e.printStackTrace();
 		}
 
 		// 切包
@@ -129,7 +153,13 @@ public class ReadWriteHandler implements Runnable{
 
 		pushService.receiveMsg(s);
 
-		channel.register(selector, SelectionKey.OP_READ);
+		try {
+			channel.register(selector, SelectionKey.OP_READ);
+		} catch (ClosedChannelException e) {
+			this.afterAcceptListener.fail();
+			log.error("---->"+e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	private String dencodeFrame(SimplePushFrame frame) {
@@ -166,22 +196,22 @@ public class ReadWriteHandler implements Runnable{
 		readBuf.flip();
 
 		//
-		// 拆帧开始;
-		// 如果读取的字节大于帧头长度，则一直等到长度为止，
-		// 否则，一直读等到帧头长度大于为止;
+		// 拆包开始;
+		// 如果读取的字节大于包头长度，则一直等到长度为止，
+		// 否则，一直读等到包头长度大于为止;
 		//
 		int bytesToRead = 0;
 
 		if (readBuf.remaining() > frameHeader.byteLength()) {
-			// 必须读到帧的长度字节
+			// 必须读到包的长度字节
 
 			byte[] frameLengthBytes = new byte[frameHeader.byteLength()];
 			readBuf.get(frameLengthBytes);
-			// 帧长度大小
-			bytesToRead = frameHeader.byteLength();
+			// 包长度大小
+			bytesToRead = frameHeader.bytesToInt(frameLengthBytes) + frameHeader.headLength();
 
 			if (readBuf.remaining() < bytesToRead) {
-				// 没有完整读到所有帧的内容,应继续读取
+				// 没有完整读到所有包的内容,应继续读取
 
 				if (readBuf.limit() == readBuf.capacity()) {
 					// buffer 长度不够 ，需扩展buffer
@@ -207,7 +237,7 @@ public class ReadWriteHandler implements Runnable{
 
 		} else {
 			//
-			// 没读到帧长度字节，调整buffer，继续读取
+			// 没读到包长度字节，调整buffer，继续读取
 			// 注意postion 与 limit 设置
 			// 接上次位置，继续读取
 			//
@@ -216,10 +246,11 @@ public class ReadWriteHandler implements Runnable{
 			return null;
 		}
 
-		// 拆帧完毕
+		// 拆包完毕
 
 		byte[] frame = new byte[bytesToRead];
 		readBuf.get(frame);
+		readBuf.clear();
 		return frame;
 
 	}
@@ -233,9 +264,6 @@ public class ReadWriteHandler implements Runnable{
 	}
 
 
-	public boolean isConnected(){
-		return this.eventLoop.isConnect();
-	}
 
 	@Override
 	public void run() {
@@ -245,6 +273,22 @@ public class ReadWriteHandler implements Runnable{
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	public ChannelReadListener getChannelReadListener() {
+		return channelReadListener;
+	}
+
+	public void setChannelReadListener(ChannelReadListener channelReadListener) {
+		this.channelReadListener = channelReadListener;
+	}
+
+	public ChannelWriteListener getChannelWriteListener() {
+		return channelWriteListener;
+	}
+
+	public void setChannelWriteListener(ChannelWriteListener channelWriteListener) {
+		this.channelWriteListener = channelWriteListener;
 	}
 
 	public AcceptHandler.AfterAcceptListener getAfterAcceptListener() {
@@ -257,6 +301,14 @@ public class ReadWriteHandler implements Runnable{
 	}
 	
 	
-	
+	public static interface ChannelReadListener{
+		void success();
+		void fail();
+	}
 
+	
+	public static interface ChannelWriteListener{
+		void success();
+		void fail();
+	}
 }

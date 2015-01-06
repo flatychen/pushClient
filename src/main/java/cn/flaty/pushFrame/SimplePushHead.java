@@ -1,5 +1,7 @@
 package cn.flaty.pushFrame;
 
+import cn.flaty.utils.ByteUtil;
+
 public  class SimplePushHead implements FrameHead {
 
 	public final int FRAME_LENGTH_BYTES = 4;
@@ -23,6 +25,19 @@ public  class SimplePushHead implements FrameHead {
 	@Override
 	public int headLength() {
 		return HEAD_LENGTH_BYTES;
+	}
+
+	@Override
+	public int bytesToInt(byte[] b) {
+		if(b.length != this.FRAME_LENGTH_BYTES){
+			throw new IllegalArgumentException("----> 包长度数组非法");
+		}
+		return ByteUtil.byteArrayToInt(b);
+	}
+
+	@Override
+	public byte[] intToBytes(int length) {
+		return ByteUtil.intToByteArray(length);
 	}
 
 	

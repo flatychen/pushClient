@@ -19,7 +19,6 @@ public class SimpleEventLoop {
 
 	private Logger log = LoggerFactory.getLogger(SimpleEventLoop.class);
 
-	private volatile boolean isEstablish = false;
 
 	private InetSocketAddress socket;
 
@@ -76,15 +75,14 @@ public class SimpleEventLoop {
 
 				if (key.isValid()) {
 					if (key.isConnectable()) {
-
+					// 连接事件
 						AfterAcceptListener listener = readWrite
 								.getAfterAcceptListener();
 						try {
 							accept.connect(selector, key);
 						} catch (Exception e) {
 							log.error("---->"+e.getMessage());
-							key.cancel();
-							selector.close();
+							clear();
 							listener.fail();
 							return;
 						}
@@ -94,6 +92,7 @@ public class SimpleEventLoop {
 						
 
 					} else if (key.isReadable()) {
+					// 可读事件	
 						readWrite.doRead(key);
 					}
 
@@ -129,12 +128,14 @@ public class SimpleEventLoop {
 		this.readWrite = readWrite;
 	}
 
-	public boolean isConnect() {
-		return this.isEstablish;
-	}
 
-	public void setConnect(boolean isEstablish) {
-		this.isEstablish = isEstablish;
+	
+	private void clear(){
+		key.cancel();
+		try {
+			selector.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
-
 }

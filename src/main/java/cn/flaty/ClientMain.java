@@ -13,6 +13,8 @@ import java.util.Properties;
 import cn.flaty.nio.ReadWriteHandler;
 import cn.flaty.nio.SimpleEventLoop;
 import cn.flaty.services.PushService;
+import cn.flaty.services.PushServiceImpl;
+import cn.flaty.services.PushSupport;
 
 public class ClientMain {
 	
@@ -44,7 +46,7 @@ public class ClientMain {
 		
 		
 		
-		PushService pushService = new PushService();
+		PushServiceImpl pushService = new PushServiceImpl();
 		pushService.connect(host, port);
 		
 	}
