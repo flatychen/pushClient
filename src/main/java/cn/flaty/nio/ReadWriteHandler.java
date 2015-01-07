@@ -82,7 +82,7 @@ public class ReadWriteHandler implements Runnable {
 		eventLoop.setAccept(new AcceptHandler());
 		eventLoop.setReadWrite(this);
 		this.readBuf = new SimpleByteBuf(5);
-		this.writeBuf = new SimpleByteBuf(20);
+		this.writeBuf = new SimpleByteBuf();
 	}
 
 	public void doWrite(String msg) {
