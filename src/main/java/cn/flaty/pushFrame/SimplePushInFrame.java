@@ -66,8 +66,8 @@ public class SimplePushInFrame {
 		case GBK:
 			s = new String(_body, frameHead.headLength(), bodyLength, CharsetUtil.GBK);
 			break;
-		case GB2312:
-			s = new String(_body, frameHead.headLength(), bodyLength,CharsetUtil.GB2312);
+		case GB18030:
+			s = new String(_body, frameHead.headLength(), bodyLength,CharsetUtil.GB18030);
 			break;
 		}
 		this.body = s;

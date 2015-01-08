@@ -4,7 +4,7 @@ public interface FrameHead {
 
 	public static enum charset {
 		
-		NULL, US_ASCII, UTF_8, GBK, GB2312
+		NULL, US_ASCII, UTF_8, GBK, GB18030
 		
 	}
 

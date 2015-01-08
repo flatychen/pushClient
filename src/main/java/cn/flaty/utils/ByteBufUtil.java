@@ -13,6 +13,13 @@ public  class ByteBufUtil {
 	}
 	
 
+
+	public static ByteBuf compositBuf() {
+		return new CompositByteBuf();
+	}
+	
+	
+	
 	public static ByteBuf wrapByteBuf(ByteBuf buf) {
 		return new CompositByteBuf(buf);
 	}
@@ -27,7 +34,7 @@ public  class ByteBufUtil {
 			sizeToExtend = (byteLength / ByteBuf.BUFFER_SIZE) + 1;
 		}
 		
-		return new CompositByteBuf(sizeToExtend,buf);
+		return new CompositByteBuf(sizeToExtend + 1,buf);
 	}
 
 }

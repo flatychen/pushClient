@@ -7,9 +7,6 @@ import java.util.List;
 
 public class SimpleByteBuf implements ByteBuf{
 	
-	
-	
-	private static int BUFFER_SIZE = 256;
 
 	private ByteBuffer buffer;
 
@@ -90,6 +87,27 @@ public class SimpleByteBuf implements ByteBuf{
 	public ByteBuf get(byte[] dst, int offset, int length) {
 		 buffer.get(dst, offset, length);
 		 return this;
+	}
+
+	@Override
+	public ByteBuf put(byte[] src, int offset, int length) {
+		buffer.put(src, offset, length);
+		return this;
+	}
+
+//	@Override
+//	public void reset() {
+//		this.clear();
+//	}
+	
+	@Override
+	public boolean isCompositBuf() {
+		return false;
+	}
+
+	@Override
+	public ByteBuf resetBuf() {
+		return null;
 	}
 
 }

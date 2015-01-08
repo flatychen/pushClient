@@ -102,8 +102,8 @@ public abstract class PushSupport implements PushService{
 
 		@Override
 		public void fail() {
-			ses.shutdown();
-			es.shutdown();
+			ses.shutdownNow();
+			es.shutdownNow();
 		}
 	};
 

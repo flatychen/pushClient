@@ -9,7 +9,7 @@ public final class CharsetUtil {
     
     public static final Charset GBK = Charset.forName("gbk");
    
-    public static final Charset GB2312 = Charset.forName("gb2312 ");
+    public static final Charset GB18030 = Charset.forName("GB18030");
 
     public static final Charset US_ASCII = Charset.forName("US-ASCII");
 

@@ -81,21 +81,18 @@ public class ReadWriteHandler implements Runnable {
 		eventLoop = new SimpleEventLoop(new InetSocketAddress(host, port));
 		eventLoop.setAccept(new AcceptHandler());
 		eventLoop.setReadWrite(this);
-		this.readBuf = new SimpleByteBuf(5);
-		this.writeBuf = new SimpleByteBuf();
+		this.readBuf = ByteBufUtil.ByteBuf();
+		this.writeBuf = ByteBufUtil.compositBuf();
 	}
 
 	public void doWrite(String msg) {
-		
-		SimplePushOutFrame frame = new SimplePushOutFrame(frameHeader, msg.getBytes());
+		SimplePushOutFrame frame = new SimplePushOutFrame(frameHeader,
+				msg.getBytes());
 		writeBuf.put(frame.getLength());
 		writeBuf.put(frame.getHead());
 		writeBuf.put(frame.getBody());
-
-		writeBuf.flip();
 		try {
-			// int r = channel.write(writeBuf);
-			this.write(writeBuf);
+			this.write();
 		} catch (Exception e) {
 			this.channelWriteListener.fail();
 			log.error("---->" + e.getMessage());
@@ -104,50 +101,56 @@ public class ReadWriteHandler implements Runnable {
 
 	}
 
-	public void write( ByteBuf buf)
-			throws IOException {
-		channel.write(buf.nioBuffer());
+	
+	
+	public void write() throws IOException {
+		writeBuf.flip();
+		int byteToWrite = 0;
+		if (writeBuf.isCompositBuf()) {
+			ByteBuffer buffers[] = writeBuf.nioBuffers();
+			for (ByteBuffer byteBuffer : buffers) {
+				byteToWrite = channel.write(byteBuffer);
+				writeBuf.position(writeBuf.position() + byteToWrite);
+			}
+		} else {
+			channel.write(writeBuf.nioBuffer());
+		}
+		
+		writeBuf.resetBuf().clear();
 	}
 
-	public void read(ByteBuf buf)
-			throws IOException {
-
-		if (buf.nioBufferSize() > 1 ){
-			ByteBuffer buffers [] = buf.nioBuffers();
-			int byteToRead = 0;
+	public void read() throws IOException {
+		int byteToRead = 0;
+		if (readBuf.isCompositBuf()) {
+			ByteBuffer buffers[] = readBuf.nioBuffers();
 			for (ByteBuffer byteBuffer : buffers) {
-				//if(byteBuffer.r)
 				byteToRead = channel.read(byteBuffer);
-				buf.position(buf.position()+byteToRead);
+				readBuf.position(readBuf.position() + byteToRead);
 			}
-		}else{
-			channel.read(buf.nioBuffer());
+		} else {
+			byteToRead = channel.read(readBuf.nioBuffer());
 		}
 		
 	}
-
 
 	public void doRead(SelectionKey key) {
 		try {
-			this.read(readBuf);
-			// channel.read(readBuf);
+			this.read();
 		} catch (IOException e) {
 			this.channelReadListener.fail();
 			log.error("---->" + e.getMessage());
-			e.printStackTrace();
 		}
 
-		// 切包
+		// 切包，直到拿到完整的包再纪续执行
 		byte[] frameBytes = this.splitFrame();
-		if(frameBytes == null){
+		if (frameBytes == null) {
 			return;
 		}
-		
-		SimplePushInFrame frame = new SimplePushInFrame(frameHeader, frameBytes);
 
-		// 解包，得到内容
+		SimplePushInFrame frame = new SimplePushInFrame(frameHeader, frameBytes);
 		String s = frame.getBody();
 
+		// 业务逻辑处理
 		pushService.receiveMsg(s);
 
 		try {
@@ -159,7 +162,6 @@ public class ReadWriteHandler implements Runnable {
 		}
 	}
 
-
 	/**
 	 * 
 	 * FIXME 扩展buf
@@ -167,7 +169,6 @@ public class ReadWriteHandler implements Runnable {
 	 * @return
 	 */
 	private byte[] splitFrame() {
-		
 
 		//
 		// 拆包开始;
@@ -192,25 +193,14 @@ public class ReadWriteHandler implements Runnable {
 				if (readBuf.limit() == readBuf.capacity()) {
 					// buffer 长度不够 ，需扩展buffer
 
-					// 注意后期抽象
 					int oldBufLength = readBuf.capacity();
 					int newBufLength = bytesToRead + frameHeader.byteLength();
-					
+
 					readBuf.position(readBuf.limit());
-					
-					ByteBuf newBuffer = ByteBufUtil.wrapByteBuf(newBufLength - oldBufLength, readBuf);
-					
-				//	ByteBuffer newBuffer = ByteBuffer
-				//			.allocateDirect(newBufLength);
-
-					//readBuf.position(0);
-					// newBuffer.put(readBuf);
-
-					 readBuf = newBuffer;
-
-					//readBuf.position(oldBufLength);
-					//readBuf.limit(newBufLength);
-
+					// 扩展原包大小
+					ByteBuf newBuffer = ByteBufUtil.wrapByteBuf(newBufLength
+							- oldBufLength, readBuf);
+					readBuf = newBuffer;
 					return null;
 				}
 
@@ -231,7 +221,7 @@ public class ReadWriteHandler implements Runnable {
 
 		byte[] frame = new byte[bytesToRead];
 		readBuf.get(frame);
-		readBuf.clear();
+		readBuf = readBuf.resetBuf().clear();
 		return frame;
 
 	}
