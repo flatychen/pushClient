@@ -6,29 +6,30 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.flaty.nio.AcceptHandler.AfterAcceptListener;
+import cn.flaty.nio.ConnectHandler.AfterConnectListener;
 import cn.flaty.utils.AssertUtils;
 
 public class SimpleEventLoop {
 
 	private Logger log = LoggerFactory.getLogger(SimpleEventLoop.class);
 
+	private int timeOut;
+
+	private static int DEFAULTTIMEOUT = 3000;
 
 	private InetSocketAddress socket;
 
 	/**
 	 * accept
 	 */
-	private AcceptHandler accept;
+	private ConnectHandler connect;
 
 	/**
-	 * io handlers
+	 * readWrite handlers
 	 */
 	private ReadWriteHandler readWrite;
 
@@ -36,25 +37,44 @@ public class SimpleEventLoop {
 
 	private volatile SelectionKey key;
 
+	private SocketChannel channel;
+
 	public SimpleEventLoop(InetSocketAddress socket) {
 		super();
 		this.socket = socket;
 	}
 
-	public void openChannel() throws IOException {
+	private void openChannel() throws IOException {
 		this.validate();
 		// 获得一个Socket通道
-		SocketChannel channel = SocketChannel.open();
+		channel = SocketChannel.open();
 		// 设置通道为非阻塞
 		channel.configureBlocking(false);
 		// 获得一个通道管理器
 		this.selector = Selector.open();
-		// 客户端连接服务器,其实方法执行并没有实现连接，需要在listen（）方法中调
-		// 用channel.finishConnect();才能完成连接
-		channel.connect(this.socket);
-		// 将通道管理器和该通道绑定，并为该通道注册SelectionKey.OP_CONNECT事件。
-		channel.register(selector, SelectionKey.OP_CONNECT);
+		
+	}
 
+	public void setConnect(ConnectHandler connect) {
+		this.connect = connect;
+	}
+
+	public boolean connect() throws IOException {
+
+		this.openChannel();
+
+		AfterConnectListener listener = readWrite.getAfterConnectListener();
+		try {
+			connect.connect(selector, channel, socket, DEFAULTTIMEOUT);
+		} catch (Exception e) {
+			log.error("---->" + e.getMessage());
+			clear();
+			listener.fail();
+			return false;
+		}
+		this.initReadWriteHandler();
+		listener.success();
+		return true;
 	}
 
 	/**
@@ -74,33 +94,34 @@ public class SimpleEventLoop {
 				keys.remove();
 
 				if (key.isValid()) {
-					if (key.isConnectable()) {
-					// 连接事件
-						AfterAcceptListener listener = readWrite
-								.getAfterAcceptListener();
-						try {
-							accept.connect(selector, key);
-						} catch (Exception e) {
-							log.error("---->"+e.getMessage());
-							clear();
-							listener.fail();
-							return;
-						}
+					// if (key.isConnectable()) {
+					// // 连接事件
+					// AfterAcceptListener listener = readWrite
+					// .getAfterAcceptListener();
+					// try {
+					// accept.connect(selector, key,timeOut);
+					// } catch (Exception e) {
+					// log.error("---->" + e.getMessage());
+					// clear();
+					// listener.fail();
+					// return;
+					// }
+					//
+					// this.initReadWriteHandler();
+					// listener.success();
+					//
+					// } else
 
-						this.initReadWriteHandler();
-						listener.success();
-						
-
-					} else if (key.isReadable()) {
-					// 可读事件	
+					if (key.isReadable()) {
+						// 可读事件
 						readWrite.doRead(key);
 					}
 
-//					else if (key.isWritable()) {
-//						key.cancel();
-//					
-//
-//					}
+					// else if (key.isWritable()) {
+					// key.cancel();
+					//
+					//
+					// }
 
 				}
 
@@ -111,27 +132,23 @@ public class SimpleEventLoop {
 
 	private void initReadWriteHandler() {
 		this.readWrite.setSelector(selector);
-		this.readWrite.setChannel(key.channel());
+		this.readWrite.setChannel(channel);
 	}
 
 	private void validate() {
-		AssertUtils.notNull(accept, "----> accept 属性不能主空");
+		AssertUtils.notNull(connect, "----> accept 属性不能主空");
 		AssertUtils.notNull(readWrite, "----> readWrite 属性不能主空");
 
-	}
-
-	public void setAccept(AcceptHandler accept) {
-		this.accept = accept;
 	}
 
 	public void setReadWrite(ReadWriteHandler readWrite) {
 		this.readWrite = readWrite;
 	}
 
-
-	
-	private void clear(){
-		key.cancel();
+	private void clear() {
+		if (key != null) {
+			key.cancel();
+		}
 		try {
 			selector.close();
 		} catch (IOException e) {

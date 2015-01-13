@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.flaty.nio.AcceptHandler.AfterAcceptListener;
+import cn.flaty.nio.ConnectHandler.AfterConnectListener;
 import cn.flaty.nio.ReadWriteHandler;
 import cn.flaty.nio.ReadWriteHandler.ChannelReadListener;
 import cn.flaty.nio.ReadWriteHandler.ChannelWriteListener;
@@ -51,7 +51,7 @@ public abstract class PushSupport implements PushService{
 
 		this.readWriteHandler = new ReadWriteHandler(this);
 		readWriteHandler.InitEventLoop(host, port);
-		readWriteHandler.setAfterAcceptListener(simpleAfterAcceptListener);
+		readWriteHandler.setAfterConnectListener(simpleAfterConnectListener);
 		readWriteHandler.setChannelReadListener(simpleChannelReadListener);
 		readWriteHandler.setChannelWriteListener(simpleChannelWriteListener);
 		// 异步连接开始
@@ -67,11 +67,11 @@ public abstract class PushSupport implements PushService{
 		System.out.println(msg);
 	}
 
-	private AfterAcceptListener simpleAfterAcceptListener = new AfterAcceptListener() {
+	private AfterConnectListener simpleAfterConnectListener = new AfterConnectListener() {
 		@Override
 		public void success() {
 			readWriteHandler.doWrite(prepareDeviceInfo());
-			//heartBeat();
+			heartBeat();
 		}
 
 		@Override
@@ -81,13 +81,13 @@ public abstract class PushSupport implements PushService{
 					log.info(MessageFormat.format(
 							"---->建立连接失败，递递{0}次重试，现重试第{1}次", MAX_RECONNCNT,
 							reConnCnt));
-					Thread.sleep(2000 * reConnCnt);
+					Thread.sleep(5000 * reConnCnt);
 					es.submit(readWriteHandler);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			} else {
-				log.info("---->5次连接均失败，关闭任务！ ");
+				log.info(MessageFormat.format("---->5次连接均失败，关闭任务！ ", MAX_RECONNCNT));
 				es.shutdown();
 			}
 		}

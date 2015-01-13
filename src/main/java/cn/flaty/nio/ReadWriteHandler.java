@@ -8,20 +8,20 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.Callable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.flaty.nio.AcceptHandler.AfterAcceptListener;
+import cn.flaty.nio.ConnectHandler.AfterConnectListener;
 import cn.flaty.pushFrame.FrameHead;
-import cn.flaty.pushFrame.SimplePushInFrame;
 import cn.flaty.pushFrame.SimplePushHead;
+import cn.flaty.pushFrame.SimplePushInFrame;
 import cn.flaty.pushFrame.SimplePushOutFrame;
 import cn.flaty.services.PushService;
 import cn.flaty.utils.ByteBufUtil;
-import cn.flaty.utils.CharsetUtil;
 
-public class ReadWriteHandler implements Runnable {
+public class ReadWriteHandler implements Runnable{
 
 	private Logger log = LoggerFactory.getLogger(ReadWriteHandler.class);
 
@@ -34,7 +34,7 @@ public class ReadWriteHandler implements Runnable {
 	/**
 	 * 连接监听器
 	 */
-	private AfterAcceptListener afterAcceptListener;
+	private AfterConnectListener afterConnectListener;
 
 	/**
 	 * 读通道监听器
@@ -79,7 +79,7 @@ public class ReadWriteHandler implements Runnable {
 
 	public void InitEventLoop(String host, int port) {
 		eventLoop = new SimpleEventLoop(new InetSocketAddress(host, port));
-		eventLoop.setAccept(new AcceptHandler());
+		eventLoop.setConnect(new ConnectHandler());
 		eventLoop.setReadWrite(this);
 		this.readBuf = ByteBufUtil.ByteBuf();
 		this.writeBuf = ByteBufUtil.compositBuf();
@@ -156,7 +156,7 @@ public class ReadWriteHandler implements Runnable {
 		try {
 			channel.register(selector, SelectionKey.OP_READ);
 		} catch (ClosedChannelException e) {
-			this.afterAcceptListener.fail();
+			this.afterConnectListener.fail();
 			log.error("---->" + e.getMessage());
 			e.printStackTrace();
 		}
@@ -234,15 +234,7 @@ public class ReadWriteHandler implements Runnable {
 		this.channel = (SocketChannel) schannel;
 	}
 
-	@Override
-	public void run() {
-		try {
-			eventLoop.openChannel();
-			eventLoop.eventLoop();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+	
 
 	public ChannelReadListener getChannelReadListener() {
 		return channelReadListener;
@@ -261,14 +253,15 @@ public class ReadWriteHandler implements Runnable {
 		this.channelWriteListener = channelWriteListener;
 	}
 
-	public AcceptHandler.AfterAcceptListener getAfterAcceptListener() {
-		return afterAcceptListener;
+
+	public AfterConnectListener getAfterConnectListener() {
+		return afterConnectListener;
 	}
 
-	public void setAfterAcceptListener(
-			AcceptHandler.AfterAcceptListener afterAcceptListener) {
-		this.afterAcceptListener = afterAcceptListener;
+	public void setAfterConnectListener(AfterConnectListener afterConnectListener) {
+		this.afterConnectListener = afterConnectListener;
 	}
+
 
 	public static interface ChannelReadListener {
 		void success();
@@ -281,4 +274,16 @@ public class ReadWriteHandler implements Runnable {
 
 		void fail();
 	}
+
+	@Override
+	public void run() {
+		try {
+			eventLoop.connect();
+			eventLoop.eventLoop();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+	}
+
 }
