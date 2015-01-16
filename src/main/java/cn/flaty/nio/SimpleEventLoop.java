@@ -15,6 +15,8 @@ import cn.flaty.utils.AssertUtils;
 
 public class SimpleEventLoop {
 
+	
+
 	private Logger log = LoggerFactory.getLogger(SimpleEventLoop.class);
 
 	private int timeOut;
@@ -23,28 +25,27 @@ public class SimpleEventLoop {
 
 	private InetSocketAddress socket;
 
-	/**
-	 * accept
-	 */
 	private ConnectHandler connect;
 
-	/**
-	 * readWrite handlers
-	 */
 	private ReadWriteHandler readWrite;
 
 	private volatile Selector selector;
 
 	private volatile SelectionKey key;
 
-	private SocketChannel channel;
+	private volatile SocketChannel channel;
 
 	public SimpleEventLoop(InetSocketAddress socket) {
-		super();
-		this.socket = socket;
+		this(socket, DEFAULTTIMEOUT);
 	}
 
-	private void openChannel() throws IOException {
+	public SimpleEventLoop(InetSocketAddress socket, int timeOut) {
+		super();
+		this.socket = socket;
+		this.timeOut = timeOut;
+	}
+
+	public void openChannel() throws IOException {
 		this.validate();
 		// 获得一个Socket通道
 		channel = SocketChannel.open();
@@ -52,37 +53,17 @@ public class SimpleEventLoop {
 		channel.configureBlocking(false);
 		// 获得一个通道管理器
 		this.selector = Selector.open();
-		
+		this.initReadWriteHandler();
 	}
 
 	public void setConnect(ConnectHandler connect) {
 		this.connect = connect;
 	}
 
-	public boolean connect() throws IOException {
-
-		this.openChannel();
-
-		AfterConnectListener listener = readWrite.getAfterConnectListener();
-		try {
-			connect.connect(selector, channel, socket, DEFAULTTIMEOUT);
-		} catch (Exception e) {
-			log.error("---->" + e.getMessage());
-			clear();
-			listener.fail();
-			return false;
-		}
-		this.initReadWriteHandler();
-		listener.success();
-		return true;
-	}
-
-	/**
-	 * FIXME cancle write key bug?
-	 * 
-	 * @throws IOException
-	 */
 	public void eventLoop() throws IOException {
+		
+		// 开始连接
+		this.connect.connect(selector, channel, socket, timeOut);
 		// 轮询访问selector
 		while (selector.select() > 0) {
 			// 获得selector中选中的项的迭代器
@@ -94,26 +75,10 @@ public class SimpleEventLoop {
 				keys.remove();
 
 				if (key.isValid()) {
-					// if (key.isConnectable()) {
-					// // 连接事件
-					// AfterAcceptListener listener = readWrite
-					// .getAfterAcceptListener();
-					// try {
-					// accept.connect(selector, key,timeOut);
-					// } catch (Exception e) {
-					// log.error("---->" + e.getMessage());
-					// clear();
-					// listener.fail();
-					// return;
-					// }
-					//
-					// this.initReadWriteHandler();
-					// listener.success();
-					//
-					// } else
 
+					// 可读事件
 					if (key.isReadable()) {
-						// 可读事件
+
 						readWrite.doRead(key);
 					}
 
@@ -130,29 +95,38 @@ public class SimpleEventLoop {
 		}
 	}
 
+	
+	
+	
+	
 	private void initReadWriteHandler() {
 		this.readWrite.setSelector(selector);
 		this.readWrite.setChannel(channel);
 	}
 
 	private void validate() {
-		AssertUtils.notNull(connect, "----> accept 属性不能主空");
-		AssertUtils.notNull(readWrite, "----> readWrite 属性不能主空");
+		AssertUtils.notNull(connect, "----> connect 属性不能为空");
+		AssertUtils.notNull(readWrite, "----> readWrite 属性不能为空");
 
 	}
 
 	public void setReadWrite(ReadWriteHandler readWrite) {
 		this.readWrite = readWrite;
 	}
-
-	private void clear() {
+	
+	public static void clearUp(Selector selector,SocketChannel channel,SelectionKey key) {
 		if (key != null) {
 			key.cancel();
 		}
 		try {
+			channel.close();
 			selector.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
+
+	
+	
+	
 }

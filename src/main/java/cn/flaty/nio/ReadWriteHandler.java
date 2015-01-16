@@ -8,7 +8,7 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +21,13 @@ import cn.flaty.pushFrame.SimplePushOutFrame;
 import cn.flaty.services.PushService;
 import cn.flaty.utils.ByteBufUtil;
 
-public class ReadWriteHandler implements Runnable{
+public class ReadWriteHandler implements Runnable {
+	
+	public enum STATE {
+		stop, connecting, connnected
+	}
+
+	public static volatile ReadWriteHandler.STATE state = STATE.stop;
 
 	private Logger log = LoggerFactory.getLogger(ReadWriteHandler.class);
 
@@ -31,10 +37,7 @@ public class ReadWriteHandler implements Runnable{
 
 	private ByteBuf writeBuf;
 
-	/**
-	 * 连接监听器
-	 */
-	private AfterConnectListener afterConnectListener;
+	private ConnectHandler connectHandler;
 
 	/**
 	 * 读通道监听器
@@ -66,11 +69,23 @@ public class ReadWriteHandler implements Runnable{
 	 */
 	private SimpleEventLoop eventLoop;
 
-	public ReadWriteHandler(PushService pushService) {
+	private static volatile ReadWriteHandler readWriteHandler = null;
+
+	public static ReadWriteHandler getInstance(PushService pushService) {
+		if (readWriteHandler == null) {
+			synchronized (ReadWriteHandler.class) {
+				readWriteHandler = new ReadWriteHandler(pushService,
+						new SimplePushHead());
+			}
+		}
+		return readWriteHandler;
+	}
+
+	private ReadWriteHandler(PushService pushService) {
 		this(pushService, new SimplePushHead());
 	}
 
-	public ReadWriteHandler(PushService pushService, FrameHead frameHeader) {
+	private ReadWriteHandler(PushService pushService, FrameHead frameHeader) {
 		super();
 		this.pushService = pushService;
 		this.frameHeader = frameHeader;
@@ -78,8 +93,9 @@ public class ReadWriteHandler implements Runnable{
 	}
 
 	public void InitEventLoop(String host, int port) {
+		this.connectHandler = ConnectHandler.getInstance();
 		eventLoop = new SimpleEventLoop(new InetSocketAddress(host, port));
-		eventLoop.setConnect(new ConnectHandler());
+		eventLoop.setConnect(connectHandler);
 		eventLoop.setReadWrite(this);
 		this.readBuf = ByteBufUtil.ByteBuf();
 		this.writeBuf = ByteBufUtil.compositBuf();
@@ -101,9 +117,7 @@ public class ReadWriteHandler implements Runnable{
 
 	}
 
-	
-	
-	public void write() throws IOException {
+	private void write() throws IOException {
 		writeBuf.flip();
 		int byteToWrite = 0;
 		if (writeBuf.isCompositBuf()) {
@@ -115,11 +129,11 @@ public class ReadWriteHandler implements Runnable{
 		} else {
 			channel.write(writeBuf.nioBuffer());
 		}
-		
+
 		writeBuf.resetBuf().clear();
 	}
 
-	public void read() throws IOException {
+	private void read() throws IOException {
 		int byteToRead = 0;
 		if (readBuf.isCompositBuf()) {
 			ByteBuffer buffers[] = readBuf.nioBuffers();
@@ -130,7 +144,7 @@ public class ReadWriteHandler implements Runnable{
 		} else {
 			byteToRead = channel.read(readBuf.nioBuffer());
 		}
-		
+
 	}
 
 	public void doRead(SelectionKey key) {
@@ -156,15 +170,12 @@ public class ReadWriteHandler implements Runnable{
 		try {
 			channel.register(selector, SelectionKey.OP_READ);
 		} catch (ClosedChannelException e) {
-			this.afterConnectListener.fail();
 			log.error("---->" + e.getMessage());
 			e.printStackTrace();
 		}
 	}
 
 	/**
-	 * 
-	 * FIXME 扩展buf
 	 * 
 	 * @return
 	 */
@@ -234,18 +245,8 @@ public class ReadWriteHandler implements Runnable{
 		this.channel = (SocketChannel) schannel;
 	}
 
-	
-
-	public ChannelReadListener getChannelReadListener() {
-		return channelReadListener;
-	}
-
 	public void setChannelReadListener(ChannelReadListener channelReadListener) {
 		this.channelReadListener = channelReadListener;
-	}
-
-	public ChannelWriteListener getChannelWriteListener() {
-		return channelWriteListener;
 	}
 
 	public void setChannelWriteListener(
@@ -253,37 +254,36 @@ public class ReadWriteHandler implements Runnable{
 		this.channelWriteListener = channelWriteListener;
 	}
 
-
-	public AfterConnectListener getAfterConnectListener() {
-		return afterConnectListener;
-	}
-
-	public void setAfterConnectListener(AfterConnectListener afterConnectListener) {
-		this.afterConnectListener = afterConnectListener;
+	public void setAfterConnectListener(
+			AfterConnectListener afterConnectListener) {
+		this.connectHandler.setAfterConnectListener(afterConnectListener);
 	}
 
 
 	public static interface ChannelReadListener {
 		void success();
-
 		void fail();
 	}
 
 	public static interface ChannelWriteListener {
 		void success();
-
 		void fail();
 	}
 
+	public void connect(ExecutorService es) {
+		es.submit(this);
+	}
+
+	
+	
 	@Override
 	public void run() {
 		try {
-			eventLoop.connect();
+			eventLoop.openChannel();
 			eventLoop.eventLoop();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
 	}
 
 }

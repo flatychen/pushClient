@@ -47,7 +47,7 @@ public class ClientMain {
 		
 		
 		PushServiceImpl pushService = new PushServiceImpl();
-		pushService.connect(host, port);
+		pushService.startUp(host, port);
 		
 	}
 }

@@ -9,12 +9,13 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.flaty.nio.ConnectHandler;
 import cn.flaty.nio.ConnectHandler.AfterConnectListener;
 import cn.flaty.nio.ReadWriteHandler;
 import cn.flaty.nio.ReadWriteHandler.ChannelReadListener;
 import cn.flaty.nio.ReadWriteHandler.ChannelWriteListener;
 
-public abstract class PushSupport implements PushService{
+public abstract class PushSupport implements PushService {
 
 	private Logger log = LoggerFactory.getLogger(PushSupport.class);
 
@@ -22,7 +23,7 @@ public abstract class PushSupport implements PushService{
 
 	private int reConnCnt = 0;
 
-	private static int HEART_BEAT_TIME = 5;
+	private static int HEART_BEAT_TIME = 30;
 
 	private static int HEART_BEAT_DEPLAY = 5;
 
@@ -36,26 +37,25 @@ public abstract class PushSupport implements PushService{
 		super();
 	}
 
-
 	private void heartBeat() {
 		ses.scheduleWithFixedDelay(new Runnable() {
 			@Override
 			public void run() {
 				log.info("----> 心跳~~");
-				//readWriteHandler.doWrite("心跳测试");
+				// readWriteHandler.doWrite("心跳测试");
 			}
 		}, HEART_BEAT_DEPLAY, HEART_BEAT_TIME, TimeUnit.SECONDS);
 	}
 
-	public void connect(final String host, final int port) {
+	public void startUp(final String host, final int port) {
 
-		this.readWriteHandler = new ReadWriteHandler(this);
+		this.readWriteHandler = ReadWriteHandler.getInstance(this);
 		readWriteHandler.InitEventLoop(host, port);
 		readWriteHandler.setAfterConnectListener(simpleAfterConnectListener);
 		readWriteHandler.setChannelReadListener(simpleChannelReadListener);
 		readWriteHandler.setChannelWriteListener(simpleChannelWriteListener);
-		// 异步连接开始
-		es.submit(readWriteHandler);
+		readWriteHandler.connect(es);
+		
 
 	}
 
@@ -67,27 +67,30 @@ public abstract class PushSupport implements PushService{
 		System.out.println(msg);
 	}
 
-	private AfterConnectListener simpleAfterConnectListener = new AfterConnectListener() {
+	private  AfterConnectListener simpleAfterConnectListener = new AfterConnectListener() {
 		@Override
 		public void success() {
 			readWriteHandler.doWrite(prepareDeviceInfo());
+			// 连接成功，开始心跳
 			heartBeat();
 		}
 
 		@Override
 		public void fail() {
-			if (reConnCnt++ < MAX_RECONNCNT) {
+			if(reConnCnt++ < MAX_RECONNCNT && ReadWriteHandler.STATE.connnected != ReadWriteHandler.state  ){
 				try {
 					log.info(MessageFormat.format(
-							"---->建立连接失败，递递{0}次重试，现重试第{1}次", MAX_RECONNCNT,
+							"---->建立连接失败，总共重试{0}次，现重试第{1}次", MAX_RECONNCNT,
 							reConnCnt));
 					Thread.sleep(5000 * reConnCnt);
-					es.submit(readWriteHandler);
+					readWriteHandler.connect(es);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-			} else {
-				log.info(MessageFormat.format("---->5次连接均失败，关闭任务！ ", MAX_RECONNCNT));
+			}
+			if (reConnCnt >= MAX_RECONNCNT){
+				log.info(MessageFormat.format("---->{0}次连接均失败，关闭任务！ ",
+						MAX_RECONNCNT));
 				es.shutdown();
 			}
 		}
@@ -96,9 +99,7 @@ public abstract class PushSupport implements PushService{
 	private ChannelReadListener simpleChannelReadListener = new ChannelReadListener() {
 
 		@Override
-		public void success() {
-
-		}
+		public void success() {}
 
 		@Override
 		public void fail() {
@@ -110,15 +111,14 @@ public abstract class PushSupport implements PushService{
 	private ChannelWriteListener simpleChannelWriteListener = new ChannelWriteListener() {
 
 		@Override
-		public void success() {
-
-		}
+		public void success() {}
 
 		@Override
 		public void fail() {
-			ses.shutdown();
-			es.shutdown();
+			ses.shutdownNow();
+			es.shutdownNow();
 		}
 	};
+
 
 }
