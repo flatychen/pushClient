@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.flaty.nio.ConnectHandler.AfterConnectListener;
+import cn.flaty.nio.SimpleEventLoop.STATE;
 import cn.flaty.pushFrame.FrameHead;
 import cn.flaty.pushFrame.SimplePushHead;
 import cn.flaty.pushFrame.SimplePushInFrame;
@@ -23,12 +24,7 @@ import cn.flaty.utils.ByteBufUtil;
 
 public class ReadWriteHandler implements Runnable {
 	
-	public enum STATE {
-		stop, connecting, connnected
-	}
-
-	public static volatile ReadWriteHandler.STATE state = STATE.stop;
-
+	
 	private Logger log = LoggerFactory.getLogger(ReadWriteHandler.class);
 
 	private FrameHead frameHeader;
@@ -93,7 +89,7 @@ public class ReadWriteHandler implements Runnable {
 	}
 
 	public void InitEventLoop(String host, int port) {
-		this.connectHandler = ConnectHandler.getInstance();
+		this.connectHandler = new ConnectHandler();
 		eventLoop = new SimpleEventLoop(new InetSocketAddress(host, port));
 		eventLoop.setConnect(connectHandler);
 		eventLoop.setReadWrite(this);
@@ -110,9 +106,10 @@ public class ReadWriteHandler implements Runnable {
 		try {
 			this.write();
 		} catch (Exception e) {
+			SimpleEventLoop.state = STATE.stop;
 			this.channelWriteListener.fail();
-			log.error("---->" + e.getMessage());
-			e.printStackTrace();
+			log.error(e.toString());
+			return;
 		}
 
 	}
@@ -151,8 +148,10 @@ public class ReadWriteHandler implements Runnable {
 		try {
 			this.read();
 		} catch (IOException e) {
+			SimpleEventLoop.state = STATE.stop;
 			this.channelReadListener.fail();
-			log.error("---->" + e.getMessage());
+			log.error(e.getMessage());
+			return;
 		}
 
 		// 切包，直到拿到完整的包再纪续执行
@@ -170,7 +169,7 @@ public class ReadWriteHandler implements Runnable {
 		try {
 			channel.register(selector, SelectionKey.OP_READ);
 		} catch (ClosedChannelException e) {
-			log.error("---->" + e.getMessage());
+			log.error("" + e.getMessage());
 			e.printStackTrace();
 		}
 	}

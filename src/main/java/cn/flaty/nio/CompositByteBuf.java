@@ -44,7 +44,7 @@ public class CompositByteBuf implements ByteBuf {
 	public CompositByteBuf(int compontSize, ByteBuf buf) {
 		super();
 		if (compontSize < 1) {
-			throw new IllegalArgumentException("----> size非法，至少大于等于1 ");
+			throw new IllegalArgumentException(" size非法，至少大于等于1 ");
 		}
 		this.buffers = new ArrayList<ByteBuf>();
 		buffers.add(buf);
@@ -80,7 +80,7 @@ public class CompositByteBuf implements ByteBuf {
 
 	public final ByteBuf position(int i) {
 		if ((i > limit) || (i < 0)) {
-			throw new IllegalArgumentException("----> position非法");
+			throw new IllegalArgumentException(" position非法");
 		}
 		int __offsetSize = i / BUFFER_SIZE;
 		int _offset = i % BUFFER_SIZE;

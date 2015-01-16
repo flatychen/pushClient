@@ -28,7 +28,7 @@ public class SimplePushInFrame {
 	
 	private void init(byte[] frame) {
 		if( frame.length <= frameHead.byteLength()){
-			throw new IllegalArgumentException("----> frame 内容不能为空 ");
+			throw new IllegalArgumentException(" frame 内容不能为空 ");
 		}
 		
 		head = new byte[frameHead.headLength()];
@@ -76,12 +76,12 @@ public class SimplePushInFrame {
 
 
 	public byte getEncypeType(){
-		AssertUtils.notNull(head, "----> 包头不能为空");
+		AssertUtils.notNull(head, " 包头不能为空");
 		return head[0];
 	}
 
 	public byte getCharsetType(){
-		AssertUtils.notNull(head, "----> 包头不能为空");
+		AssertUtils.notNull(head, " 包头不能为空");
 		return head[1];
 	}
 	

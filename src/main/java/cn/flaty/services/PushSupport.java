@@ -14,16 +14,18 @@ import cn.flaty.nio.ConnectHandler.AfterConnectListener;
 import cn.flaty.nio.ReadWriteHandler;
 import cn.flaty.nio.ReadWriteHandler.ChannelReadListener;
 import cn.flaty.nio.ReadWriteHandler.ChannelWriteListener;
+import cn.flaty.nio.SimpleEventLoop;
+import cn.flaty.nio.SimpleEventLoop.STATE;
 
 public abstract class PushSupport implements PushService {
 
 	private Logger log = LoggerFactory.getLogger(PushSupport.class);
 
-	private static int MAX_RECONNCNT = 5;
+	private static int MAX_RECONNCNT = 3;
 
 	private int reConnCnt = 0;
 
-	private static int HEART_BEAT_TIME = 30;
+	private static int HEART_BEAT_TIME = 20;
 
 	private static int HEART_BEAT_DEPLAY = 5;
 
@@ -37,11 +39,11 @@ public abstract class PushSupport implements PushService {
 		super();
 	}
 
-	private void heartBeat() {
+	private void StartHeartBeat() {
 		ses.scheduleWithFixedDelay(new Runnable() {
 			@Override
 			public void run() {
-				log.info("----> 心跳~~");
+					log.info(" 心跳~~");
 				// readWriteHandler.doWrite("心跳测试");
 			}
 		}, HEART_BEAT_DEPLAY, HEART_BEAT_TIME, TimeUnit.SECONDS);
@@ -54,7 +56,9 @@ public abstract class PushSupport implements PushService {
 		readWriteHandler.setAfterConnectListener(simpleAfterConnectListener);
 		readWriteHandler.setChannelReadListener(simpleChannelReadListener);
 		readWriteHandler.setChannelWriteListener(simpleChannelWriteListener);
-		readWriteHandler.connect(es);
+		if(SimpleEventLoop.state == STATE.stop){
+			readWriteHandler.connect(es);
+		}
 		
 
 	}
@@ -72,26 +76,26 @@ public abstract class PushSupport implements PushService {
 		public void success() {
 			readWriteHandler.doWrite(prepareDeviceInfo());
 			// 连接成功，开始心跳
-			heartBeat();
+			StartHeartBeat();
 		}
 
 		@Override
 		public void fail() {
-			if(reConnCnt++ < MAX_RECONNCNT && ReadWriteHandler.STATE.connnected != ReadWriteHandler.state  ){
+			if(reConnCnt++ < MAX_RECONNCNT && SimpleEventLoop.STATE.connnected != SimpleEventLoop.state  ){
 				try {
 					log.info(MessageFormat.format(
-							"---->建立连接失败，总共重试{0}次，现重试第{1}次", MAX_RECONNCNT,
+							"建立连接失败，总共重试{0}次，现重试第{1}次", MAX_RECONNCNT,
 							reConnCnt));
-					Thread.sleep(5000 * reConnCnt);
+					Thread.sleep(20000 * reConnCnt);
 					readWriteHandler.connect(es);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
 			if (reConnCnt >= MAX_RECONNCNT){
-				log.info(MessageFormat.format("---->{0}次连接均失败，关闭任务！ ",
+				log.info(MessageFormat.format("{0}次连接均失败！ ",
 						MAX_RECONNCNT));
-				es.shutdown();
+				SimpleEventLoop.state = STATE.stop;
 			}
 		}
 	};

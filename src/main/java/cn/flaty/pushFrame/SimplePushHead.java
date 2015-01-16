@@ -30,7 +30,7 @@ public  class SimplePushHead implements FrameHead {
 	@Override
 	public int bytesToInt(byte[] b) {
 		if(b.length != this.FRAME_LENGTH_BYTES){
-			throw new IllegalArgumentException("----> 包长度数组非法");
+			throw new IllegalArgumentException(" 包长度数组非法");
 		}
 		return ByteUtil.byteArrayToInt(b);
 	}

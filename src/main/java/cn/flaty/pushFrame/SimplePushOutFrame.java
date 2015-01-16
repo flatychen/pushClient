@@ -19,7 +19,7 @@ public class SimplePushOutFrame {
 	public SimplePushOutFrame(FrameHead frameHead, byte[] body) {
 		super();
 		if (body == null || body.length <= 0) {
-			throw new IllegalArgumentException("---->body不可为空或长度非法");
+			throw new IllegalArgumentException("body不可为空或长度非法");
 		}
 
 		this.frameHead = frameHead;

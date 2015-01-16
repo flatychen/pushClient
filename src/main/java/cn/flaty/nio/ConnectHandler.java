@@ -11,7 +11,7 @@ import java.util.TimerTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.flaty.nio.ReadWriteHandler.STATE;
+import cn.flaty.nio.SimpleEventLoop.STATE;
 
 public class ConnectHandler {
 
@@ -20,32 +20,14 @@ public class ConnectHandler {
 
 	private AfterConnectListener afterConnectListener;
 
-	private volatile boolean connecting = true;
+	private volatile boolean connecting;
 
-	private static ConnectHandler connect;
 
-	public static ConnectHandler getInstance() {
-		if (connect == null) {
-			synchronized (ConnectHandler.class) {
-				connect = new ConnectHandler();
-			}
-		}
-		return connect;
-	}
-
-	private Selector selector;
-	private SocketChannel channel;
-	private InetSocketAddress socket;
-	private int timeOut;
-
-	public void connect(Selector s, SocketChannel channel,
+	public void connect(Selector selector, SocketChannel channel,
 			InetSocketAddress socket, int timeOut) {
-		System.out.println(ReadWriteHandler.state);
-		ReadWriteHandler.state = STATE.connecting;
-		this.channel = channel;
-		this.socket = socket;
-		this.timeOut = timeOut;
+		SimpleEventLoop.state = STATE.connecting;
 		// 提供简单超时检查
+		this.connecting = true;
 		new Timer().schedule(new TimerTask() {
 			@Override
 			public void run() {
@@ -54,9 +36,11 @@ public class ConnectHandler {
 		}, timeOut);
 		try {
 			// 开始连接
+			channel.configureBlocking(false);
+			
 			boolean connected = false;
 			channel.connect(socket);
-			while (connecting && !connected) {
+			while (connecting && !(connected)) {
 				try {
 					Thread.sleep(200);
 					connected = channel.finishConnect();
@@ -70,24 +54,20 @@ public class ConnectHandler {
 				throw new SocketTimeoutException(" socket 连接超时 ");
 			}
 
-			channel.configureBlocking(false);
+			
 			channel.register(selector, SelectionKey.OP_READ);
 		} catch (Exception e) {
-			log.error("---->" + e.getMessage());
-			SimpleEventLoop.clearUp(s, channel, null);
+			log.error(e.toString());
+			SimpleEventLoop.clearUp(selector, channel, null);
 			afterConnectListener.fail();
 			return;
 		}
-		System.out.println("aa");
 		afterConnectListener.success();
-		ReadWriteHandler.state = STATE.connnected;
-		log.info("----> 连接建立成功");
+		SimpleEventLoop.state = STATE.connnected;
+		log.info(" 连接建立成功");
 
 	}
 
-	public void reConnect() {
-		this.connect(selector, channel, socket, timeOut);
-	}
 
 	public AfterConnectListener getAfterConnectListener() {
 		return afterConnectListener;

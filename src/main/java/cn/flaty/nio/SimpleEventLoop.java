@@ -10,12 +10,21 @@ import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.flaty.nio.ConnectHandler.AfterConnectListener;
 import cn.flaty.utils.AssertUtils;
 
+
+/**
+ * 简单事件循环，主要用于连接与监听读事件
+ * @author flatychen
+ */
 public class SimpleEventLoop {
 
-	
+	public enum STATE {
+		stop, connecting, connnected
+	}
+
+	public static volatile  SimpleEventLoop.STATE state = STATE.stop;
+
 
 	private Logger log = LoggerFactory.getLogger(SimpleEventLoop.class);
 
@@ -50,7 +59,7 @@ public class SimpleEventLoop {
 		// 获得一个Socket通道
 		channel = SocketChannel.open();
 		// 设置通道为非阻塞
-		channel.configureBlocking(false);
+		//channel.configureBlocking(false);
 		// 获得一个通道管理器
 		this.selector = Selector.open();
 		this.initReadWriteHandler();
@@ -105,8 +114,8 @@ public class SimpleEventLoop {
 	}
 
 	private void validate() {
-		AssertUtils.notNull(connect, "----> connect 属性不能为空");
-		AssertUtils.notNull(readWrite, "----> readWrite 属性不能为空");
+		AssertUtils.notNull(connect, " connect 属性不能为空");
+		AssertUtils.notNull(readWrite, " readWrite 属性不能为空");
 
 	}
 
@@ -114,6 +123,14 @@ public class SimpleEventLoop {
 		this.readWrite = readWrite;
 	}
 	
+	/**
+	 * 
+	 * 清理资源
+	 * @param selector
+	 * @param channel
+	 * @param key
+	 * @author flatychen
+	 */
 	public static void clearUp(Selector selector,SocketChannel channel,SelectionKey key) {
 		if (key != null) {
 			key.cancel();

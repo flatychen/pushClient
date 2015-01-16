@@ -2,6 +2,10 @@ package cn.flaty.nio;
 
 import java.nio.ByteBuffer;
 
+/**
+ * 自定义buf
+ * @author flatychen
+ */
 public interface ByteBuf {
 
 	public static int BUFFER_SIZE = 5;

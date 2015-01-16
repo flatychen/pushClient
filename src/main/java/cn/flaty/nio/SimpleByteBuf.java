@@ -5,6 +5,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * 简单包装buf
+ * @author flatychen
+ */
 public class SimpleByteBuf implements ByteBuf{
 	
 
