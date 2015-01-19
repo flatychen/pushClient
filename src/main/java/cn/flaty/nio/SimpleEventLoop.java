@@ -72,7 +72,9 @@ public class SimpleEventLoop {
 	public void eventLoop() throws IOException {
 		
 		// 开始连接
-		this.connect.connect(selector, channel, socket, timeOut);
+		if(!this.connect.connect(selector, channel, socket, timeOut)){
+			return ;
+		}
 		// 轮询访问selector
 		while (selector.select() > 0) {
 			// 获得selector中选中的项的迭代器

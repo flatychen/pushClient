@@ -23,7 +23,7 @@ public class ConnectHandler {
 	private volatile boolean connecting;
 
 
-	public void connect(Selector selector, SocketChannel channel,
+	public boolean connect(Selector selector, SocketChannel channel,
 			InetSocketAddress socket, int timeOut) {
 		SimpleEventLoop.state = STATE.connecting;
 		// 提供简单超时检查
@@ -60,11 +60,12 @@ public class ConnectHandler {
 			log.error(e.toString());
 			SimpleEventLoop.clearUp(selector, channel, null);
 			afterConnectListener.fail();
-			return;
+			return false;
 		}
 		afterConnectListener.success();
 		SimpleEventLoop.state = STATE.connnected;
 		log.info(" 连接建立成功");
+		return true;
 
 	}
 

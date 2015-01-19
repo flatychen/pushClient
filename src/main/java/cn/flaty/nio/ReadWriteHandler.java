@@ -120,14 +120,16 @@ public class ReadWriteHandler implements Runnable {
 		if (writeBuf.isCompositBuf()) {
 			ByteBuffer buffers[] = writeBuf.nioBuffers();
 			for (ByteBuffer byteBuffer : buffers) {
-				byteToWrite = channel.write(byteBuffer);
-				writeBuf.position(writeBuf.position() + byteToWrite);
+				while(byteBuffer.remaining() > 0){
+					byteToWrite  = channel.write(byteBuffer) + byteToWrite;
+				}
 			}
+			writeBuf.position(writeBuf.position() + byteToWrite);
 		} else {
 			channel.write(writeBuf.nioBuffer());
 		}
 
-		writeBuf.resetBuf().clear();
+		writeBuf.resetBuf();
 	}
 
 	private void read() throws IOException {

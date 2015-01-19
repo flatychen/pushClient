@@ -65,6 +65,8 @@ public class CompositByteBuf implements ByteBuf {
 		for (ByteBuf buffer : buffers) {
 			buffer.clear();
 		}
+		this.position = 0;
+		this.limit = this.capacity;
 		return this;
 	}
 
@@ -250,7 +252,15 @@ public class CompositByteBuf implements ByteBuf {
 
 	@Override
 	public ByteBuf resetBuf() {
-		return buffers.get(0);
+		int _size = 1;
+		this.buffersSize = 1;
+		for (; _size < buffers.size();) {
+			this.buffers.remove(_size);
+		}
+		this.buffers.get(0).clear();
+		this.limit = this.capacity = buffers.get(0).capacity();
+		this.currentBufferIndex = this.currentBufferOffset = this.position = 0 ;
+		return this;
 	}
 
 }

@@ -27,7 +27,7 @@ public abstract class PushSupport implements PushService {
 
 	private static int HEART_BEAT_TIME = 20;
 
-	private static int HEART_BEAT_DEPLAY = 5;
+	private static int HEART_BEAT_DEPLAY = 2;
 
 	private ScheduledExecutorService ses = Executors.newScheduledThreadPool(1);
 
@@ -43,8 +43,8 @@ public abstract class PushSupport implements PushService {
 		ses.scheduleWithFixedDelay(new Runnable() {
 			@Override
 			public void run() {
-					log.info(" 心跳~~");
-				// readWriteHandler.doWrite("心跳测试");
+				log.info(" 心跳~~");
+				readWriteHandler.doWrite("心跳测试afddddddsegasfsfdafdsfsafsafasfsadfsdf");
 			}
 		}, HEART_BEAT_DEPLAY, HEART_BEAT_TIME, TimeUnit.SECONDS);
 	}
@@ -56,10 +56,9 @@ public abstract class PushSupport implements PushService {
 		readWriteHandler.setAfterConnectListener(simpleAfterConnectListener);
 		readWriteHandler.setChannelReadListener(simpleChannelReadListener);
 		readWriteHandler.setChannelWriteListener(simpleChannelWriteListener);
-		if(SimpleEventLoop.state == STATE.stop){
+		if (SimpleEventLoop.state == STATE.stop) {
 			readWriteHandler.connect(es);
 		}
-		
 
 	}
 
@@ -71,7 +70,7 @@ public abstract class PushSupport implements PushService {
 		System.out.println(msg);
 	}
 
-	private  AfterConnectListener simpleAfterConnectListener = new AfterConnectListener() {
+	private AfterConnectListener simpleAfterConnectListener = new AfterConnectListener() {
 		@Override
 		public void success() {
 			readWriteHandler.doWrite(prepareDeviceInfo());
@@ -81,20 +80,19 @@ public abstract class PushSupport implements PushService {
 
 		@Override
 		public void fail() {
-			if(reConnCnt++ < MAX_RECONNCNT && SimpleEventLoop.STATE.connnected != SimpleEventLoop.state  ){
+			if (reConnCnt++ < MAX_RECONNCNT
+					&& SimpleEventLoop.STATE.connnected != SimpleEventLoop.state) {
 				try {
-					log.info(MessageFormat.format(
-							"建立连接失败，总共重试{0}次，现重试第{1}次", MAX_RECONNCNT,
-							reConnCnt));
+					log.info(MessageFormat.format("建立连接失败，总共重试{0}次，现重试第{1}次",
+							MAX_RECONNCNT, reConnCnt));
 					Thread.sleep(20000 * reConnCnt);
 					readWriteHandler.connect(es);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
-			if (reConnCnt >= MAX_RECONNCNT){
-				log.info(MessageFormat.format("{0}次连接均失败！ ",
-						MAX_RECONNCNT));
+			if (reConnCnt >= MAX_RECONNCNT) {
+				log.info(MessageFormat.format("{0}次连接均失败！ ", MAX_RECONNCNT));
 				SimpleEventLoop.state = STATE.stop;
 			}
 		}
@@ -103,7 +101,8 @@ public abstract class PushSupport implements PushService {
 	private ChannelReadListener simpleChannelReadListener = new ChannelReadListener() {
 
 		@Override
-		public void success() {}
+		public void success() {
+		}
 
 		@Override
 		public void fail() {
@@ -115,7 +114,8 @@ public abstract class PushSupport implements PushService {
 	private ChannelWriteListener simpleChannelWriteListener = new ChannelWriteListener() {
 
 		@Override
-		public void success() {}
+		public void success() {
+		}
 
 		@Override
 		public void fail() {
@@ -123,6 +123,5 @@ public abstract class PushSupport implements PushService {
 			es.shutdownNow();
 		}
 	};
-
 
 }

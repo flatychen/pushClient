@@ -111,7 +111,8 @@ public class SimpleByteBuf implements ByteBuf{
 
 	@Override
 	public ByteBuf resetBuf() {
-		return null;
+		this.clear();
+		return this;
 	}
 
 }
