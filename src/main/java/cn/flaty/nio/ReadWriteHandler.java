@@ -168,12 +168,12 @@ public class ReadWriteHandler implements Runnable {
 		// 业务逻辑处理
 		pushService.receiveMsg(s);
 
-		try {
-			channel.register(selector, SelectionKey.OP_READ);
-		} catch (ClosedChannelException e) {
-			log.error("" + e.getMessage());
-			e.printStackTrace();
-		}
+//		try {
+//			channel.register(selector, SelectionKey.OP_READ);
+//		} catch (ClosedChannelException e) {
+//			log.error("" + e.getMessage());
+//			e.printStackTrace();
+//		}
 	}
 
 	/**

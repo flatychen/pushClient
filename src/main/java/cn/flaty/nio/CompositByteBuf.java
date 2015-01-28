@@ -33,10 +33,11 @@ public class CompositByteBuf implements ByteBuf {
 
 	private List<ByteBuf> buffers;
 
-	public CompositByteBuf() {
-		this(1, ByteBufUtil.ByteBuf());
-	}
 
+	public CompositByteBuf() {
+		this(1, new SimpleByteBuf(ByteBuf.BUFFER_SIZE));
+	}
+	
 	public CompositByteBuf(ByteBuf buf) {
 		this(1, buf);
 	}
@@ -52,7 +53,7 @@ public class CompositByteBuf implements ByteBuf {
 		this.currentBufferIndex = compontSize == 1 ? 0 : 1;
 		this.buffersSize = compontSize;
 		this.position = buf.position();
-		this.capacity = this.limit = compontSize == 1 ? buf.capacity() : BUFFER_SIZE * compontSize + buf.capacity();
+		this.capacity = this.limit = compontSize == 1 ? buf.capacity() : BUFFER_SIZE * (compontSize - 1)+ buf.capacity();
 	}
 
 	private void addCompont(int size) {
@@ -252,15 +253,9 @@ public class CompositByteBuf implements ByteBuf {
 
 	@Override
 	public ByteBuf resetBuf() {
-		int _size = 1;
-		this.buffersSize = 1;
-		for (; _size < buffers.size();) {
-			this.buffers.remove(_size);
-		}
-		this.buffers.get(0).clear();
-		this.limit = this.capacity = buffers.get(0).capacity();
-		this.currentBufferIndex = this.currentBufferOffset = this.position = 0 ;
-		return this;
+		ByteBuf buf = this.buffers.get(0);
+		buf.clear();
+		return buf;
 	}
 
 }

@@ -67,7 +67,6 @@ public abstract class PushSupport implements PushService {
 	}
 
 	protected void sendMsg(String msg) {
-		System.out.println(msg);
 	}
 
 	private AfterConnectListener simpleAfterConnectListener = new AfterConnectListener() {
@@ -75,7 +74,7 @@ public abstract class PushSupport implements PushService {
 		public void success() {
 			readWriteHandler.doWrite(prepareDeviceInfo());
 			// 连接成功，开始心跳
-			StartHeartBeat();
+			//StartHeartBeat();
 		}
 
 		@Override

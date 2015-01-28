@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
  */
 public interface ByteBuf {
 
-	public static int BUFFER_SIZE = 256;
+	public static int BUFFER_SIZE = 100;
 
 	public ByteBuf clear();
 
