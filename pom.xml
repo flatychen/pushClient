@@ -7,9 +7,12 @@
 	<packaging>jar</packaging>
 	<properties>
 		<encoding>utf-8</encoding>
-		<maven.compiler.source>1.6</maven.compiler.source>
-		<maven.compiler.target>1.6</maven.compiler.target>
-		<maven.compiler.compilerVersion>1.6</maven.compiler.compilerVersion>
+		<jdk>1.6</jdk>
+		<mainClass>cn.flaty.ClientMain</mainClass>
+		<maven.compiler.source>${jdk}</maven.compiler.source>
+		<maven.compiler.target>${jdk}</maven.compiler.target>
+		<maven.compiler.compilerVersion>${jdk}</maven.compiler.compilerVersion>
+		<!-- commons -->
 		<!-- logs -->
 		<org.slf4j-version>1.6.4</org.slf4j-version>
 		<log4j-version>1.2.14</log4j-version>
@@ -62,4 +65,63 @@
 		</dependency>
 
 	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<compilerVersion>${jdk}</compilerVersion>
+				</configuration>
+			</plugin>
+
+			<!-- 排除项目配置文件 -->
+			<plugin>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<mainClass>${mainClass}</mainClass>
+						</manifest>
+						<manifestEntries>
+							<Class-Path>.</Class-Path>
+						</manifestEntries>
+					</archive>
+					<excludes>
+						<excludes>*.properties</excludes>
+					</excludes>
+				</configuration>
+				<executions>
+					<execution>
+						<id>default-jar</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- 打包工具 -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<descriptors>
+						<descriptor>src/main/assembly/assembly.xml</descriptor>
+					</descriptors>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 </project>
