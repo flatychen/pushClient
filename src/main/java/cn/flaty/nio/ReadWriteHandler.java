@@ -23,8 +23,7 @@ import cn.flaty.services.PushService;
 import cn.flaty.utils.ByteBufUtil;
 
 public class ReadWriteHandler implements Runnable {
-	
-	
+
 	private Logger log = LoggerFactory.getLogger(ReadWriteHandler.class);
 
 	private FrameHead frameHeader;
@@ -98,8 +97,8 @@ public class ReadWriteHandler implements Runnable {
 	}
 
 	public void doWrite(String msg) {
-		SimplePushOutFrame frame = new SimplePushOutFrame(frameHeader,
-				msg.getBytes());
+
+		SimplePushOutFrame frame = new SimplePushOutFrame(frameHeader, msg);
 		writeBuf.put(frame.getLength());
 		writeBuf.put(frame.getHead());
 		writeBuf.put(frame.getBody());
@@ -120,8 +119,8 @@ public class ReadWriteHandler implements Runnable {
 		if (writeBuf.isCompositBuf()) {
 			ByteBuffer buffers[] = writeBuf.nioBuffers();
 			for (ByteBuffer byteBuffer : buffers) {
-				while(byteBuffer.remaining() > 0){
-					byteToWrite  = channel.write(byteBuffer) + byteToWrite;
+				while (byteBuffer.remaining() > 0) {
+					byteToWrite = channel.write(byteBuffer) + byteToWrite;
 				}
 			}
 			writeBuf.position(writeBuf.position() + byteToWrite);
@@ -129,7 +128,7 @@ public class ReadWriteHandler implements Runnable {
 			channel.write(writeBuf.nioBuffer());
 		}
 
-		writeBuf.resetBuf();
+		writeBuf = writeBuf.resetBuf();
 	}
 
 	private void read() throws IOException {
@@ -168,16 +167,16 @@ public class ReadWriteHandler implements Runnable {
 		// 业务逻辑处理
 		pushService.receiveMsg(s);
 
-//		try {
-//			channel.register(selector, SelectionKey.OP_READ);
-//		} catch (ClosedChannelException e) {
-//			log.error("" + e.getMessage());
-//			e.printStackTrace();
-//		}
+		// try {
+		// channel.register(selector, SelectionKey.OP_READ);
+		// } catch (ClosedChannelException e) {
+		// log.error("" + e.getMessage());
+		// e.printStackTrace();
+		// }
 	}
 
 	/**
-	 * 
+	 *
 	 * @return
 	 */
 	private byte[] splitFrame() {
@@ -233,7 +232,7 @@ public class ReadWriteHandler implements Runnable {
 
 		byte[] frame = new byte[bytesToRead];
 		readBuf.get(frame);
-		readBuf = readBuf.resetBuf().clear();
+		this.readBuf = readBuf.resetBuf();
 		return frame;
 
 	}
@@ -260,14 +259,15 @@ public class ReadWriteHandler implements Runnable {
 		this.connectHandler.setAfterConnectListener(afterConnectListener);
 	}
 
-
 	public static interface ChannelReadListener {
 		void success();
+
 		void fail();
 	}
 
 	public static interface ChannelWriteListener {
 		void success();
+
 		void fail();
 	}
 
@@ -275,8 +275,6 @@ public class ReadWriteHandler implements Runnable {
 		es.submit(this);
 	}
 
-	
-	
 	@Override
 	public void run() {
 		try {

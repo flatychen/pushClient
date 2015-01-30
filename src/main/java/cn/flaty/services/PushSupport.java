@@ -43,8 +43,8 @@ public abstract class PushSupport implements PushService {
 		ses.scheduleWithFixedDelay(new Runnable() {
 			@Override
 			public void run() {
-				log.info(" 心跳~~");
-				readWriteHandler.doWrite("心跳测试afddddddsegasfsfdafdsfsafsafasfsadfsdf");
+				log.info(" ~~心跳~~");
+				readWriteHandler.doWrite("心跳报文");
 			}
 		}, HEART_BEAT_DEPLAY, HEART_BEAT_TIME, TimeUnit.SECONDS);
 	}
