@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
  */
 public interface ByteBuf {
 
-	public static int BUFFER_SIZE = 100;
+	public static int BUFFER_SIZE = 256;
 
 	public ByteBuf clear();
 
@@ -33,11 +33,11 @@ public interface ByteBuf {
 	public ByteBuf get(byte dst[]);
 
 	public ByteBuf get(byte[] dst, int offset, int length);
-	
+
 	public boolean isCompositBuf();
-	
+
 	public ByteBuf resetBuf();
-	
+
 	public int nioBufferSize();
 
 	public ByteBuffer nioBuffer();

@@ -97,7 +97,6 @@ public class ReadWriteHandler implements Runnable {
 	}
 
 	public void doWrite(String msg) {
-
 		SimplePushOutFrame frame = new SimplePushOutFrame(frameHeader, msg);
 		writeBuf.put(frame.getLength());
 		writeBuf.put(frame.getHead());
@@ -150,11 +149,18 @@ public class ReadWriteHandler implements Runnable {
 			this.read();
 		} catch (IOException e) {
 			SimpleEventLoop.state = STATE.stop;
+			SimpleEventLoop.clearUp(selector, channel, key);
+			log.error("doRead fail!" + e.getMessage());
 			this.channelReadListener.fail();
-			log.error(e.getMessage());
-			return;
 		}
 
+		// 处理 tcp 强制断开连接 rst
+		if (readBuf.position() == 0) {
+			SimpleEventLoop.state = STATE.stop;
+			SimpleEventLoop.clearUp(selector, channel, key);
+			log.error("服务器端重置连接");
+			this.channelReadListener.fail();
+		}
 		// 切包，直到拿到完整的包再纪续执行
 		byte[] frameBytes = this.splitFrame();
 		if (frameBytes == null) {
