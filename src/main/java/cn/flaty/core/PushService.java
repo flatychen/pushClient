@@ -1,4 +1,4 @@
-package cn.flaty.services;
+package cn.flaty.core;
 
 
 public interface PushService {

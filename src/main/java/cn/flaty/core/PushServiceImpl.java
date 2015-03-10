@@ -1,4 +1,4 @@
-package cn.flaty.services;
+package cn.flaty.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

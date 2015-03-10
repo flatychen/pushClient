@@ -1,4 +1,4 @@
-package cn.flaty.services;
+package cn.flaty.core;
 
 import java.text.MessageFormat;
 import java.util.concurrent.ExecutorService;
