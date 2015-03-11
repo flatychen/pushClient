@@ -16,13 +16,8 @@
 	</dependencySets>
 	<fileSets>
 		<fileSet>
-			<directory>src/main/scripts</directory>
-			<outputDirectory>/bin</outputDirectory>
-			<fileMode>0755</fileMode>
-			<includes>
-				<include>*</include>
-			</includes>
-			<lineEnding>unix</lineEnding>
+			<directory>src/main/resources</directory>
+			<outputDirectory>/lib</outputDirectory>
 		</fileSet>
 		<fileSet>
 			<outputDirectory>/</outputDirectory>
@@ -31,10 +26,20 @@
 			</includes>
 		</fileSet>
 		<fileSet>
-			<directory>src/main/resources</directory>
-			<outputDirectory>/lib</outputDirectory>
+			<directory>src/main/scripts</directory>
+			<outputDirectory>/</outputDirectory>
+			<lineEnding>dos</lineEnding>
 			<includes>
-				<include>*</include>
+				<include>*.bat</include>
+			</includes>
+		</fileSet>
+		<fileSet>
+			<directory>src/main/scripts</directory>
+			<outputDirectory>/</outputDirectory>
+			<lineEnding>unix</lineEnding>
+			<fileMode>755</fileMode>
+			<includes>
+				<include>*.sh</include>
 			</includes>
 		</fileSet>
 	</fileSets>

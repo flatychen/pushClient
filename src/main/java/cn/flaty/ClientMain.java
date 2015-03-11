@@ -1,53 +1,55 @@
 package cn.flaty;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
-import java.util.Iterator;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-import cn.flaty.core.PushService;
 import cn.flaty.core.PushServiceImpl;
-import cn.flaty.core.PushSupport;
-import cn.flaty.nio.ReadWriteHandler;
-import cn.flaty.nio.SimpleEventLoop;
 
 public class ClientMain {
-	
-	
+
 	private String host;
 	private int port;
 	private int threads;
-	
+	private int connections;
+
+	// concurrent
+
+	private ExecutorService es;
+
 	/**
 	 * 启动客户端测试
 	 * 
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		new ClientMain().start();
+		new ClientMain().init().startUp();
 	}
 
-	
-	public void start(){
+	public ClientMain init() {
 		Properties p = new Properties();
 		try {
-			p.load(this.getClass().getClassLoader().getResourceAsStream("client.properties"));
+			p.load(this.getClass().getClassLoader()
+					.getResourceAsStream("client.properties"));
+			host = p.getProperty("local.host");
+			port = Integer.parseInt(p.getProperty("local.port"));
+			threads = Integer.parseInt(p.getProperty("local.threads"));
+			connections = Integer.parseInt(p.getProperty("local.connections"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		host = p.getProperty("local.host");
-		port = Integer.parseInt(p.getProperty("local.port"));
-		threads = Integer.parseInt(p.getProperty("local.threads"));
-		
-		
-		
-		PushServiceImpl pushService = new PushServiceImpl();
-		pushService.startUp(host, port);
-		
+
+		es = Executors.newFixedThreadPool(threads);
+		return this;
+
 	}
+
+	public void startUp() {
+		for (int i = 0; i < connections; i++) {
+			PushServiceImpl pushService = new PushServiceImpl();
+			pushService.connect(host, port, es);
+		}
+	}
+
 }

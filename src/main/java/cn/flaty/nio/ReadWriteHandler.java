@@ -8,7 +8,9 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +24,7 @@ import cn.flaty.pushFrame.SimplePushInFrame;
 import cn.flaty.pushFrame.SimplePushOutFrame;
 import cn.flaty.utils.ByteBufUtil;
 
-public class ReadWriteHandler implements Runnable {
+public class ReadWriteHandler  implements Callable<Integer> {
 
 	private Logger log = LoggerFactory.getLogger(ReadWriteHandler.class);
 
@@ -64,36 +66,27 @@ public class ReadWriteHandler implements Runnable {
 	 */
 	private SimpleEventLoop eventLoop;
 
-	private static volatile ReadWriteHandler readWriteHandler = null;
 
-	public static ReadWriteHandler getInstance(PushService pushService) {
-		if (readWriteHandler == null) {
-			synchronized (ReadWriteHandler.class) {
-				readWriteHandler = new ReadWriteHandler(pushService,
-						new SimplePushHead());
-			}
-		}
-		return readWriteHandler;
-	}
 
-	private ReadWriteHandler(PushService pushService) {
+	public ReadWriteHandler(PushService pushService) {
 		this(pushService, new SimplePushHead());
 	}
 
-	private ReadWriteHandler(PushService pushService, FrameHead frameHeader) {
+	public ReadWriteHandler(PushService pushService, FrameHead frameHeader) {
 		super();
 		this.pushService = pushService;
 		this.frameHeader = frameHeader;
 
 	}
 
-	public void InitEventLoop(String host, int port) {
+	public SimpleEventLoop InitEventLoop(String host, int port) {
 		this.connectHandler = new ConnectHandler();
 		eventLoop = new SimpleEventLoop(new InetSocketAddress(host, port));
 		eventLoop.setConnect(connectHandler);
 		eventLoop.setReadWrite(this);
 		this.readBuf = ByteBufUtil.ByteBuf();
 		this.writeBuf = ByteBufUtil.compositBuf();
+		return this.eventLoop;
 	}
 
 	public void doWrite(String msg) {
@@ -104,7 +97,7 @@ public class ReadWriteHandler implements Runnable {
 		try {
 			this.write();
 		} catch (Exception e) {
-			SimpleEventLoop.state = STATE.stop;
+			eventLoop.setState(STATE.stop);
 			this.channelWriteListener.fail();
 			log.error(e.toString());
 			return;
@@ -148,7 +141,7 @@ public class ReadWriteHandler implements Runnable {
 		try {
 			this.read();
 		} catch (IOException e) {
-			SimpleEventLoop.state = STATE.stop;
+			eventLoop.setState(STATE.stop);
 			SimpleEventLoop.clearUp(selector, channel, key);
 			log.error("doRead fail!" + e.getMessage());
 			this.channelReadListener.fail();
@@ -156,7 +149,7 @@ public class ReadWriteHandler implements Runnable {
 
 		// 处理 tcp 强制断开连接 rst
 		if (readBuf.position() == 0) {
-			SimpleEventLoop.state = STATE.stop;
+			eventLoop.setState(STATE.stop);
 			SimpleEventLoop.clearUp(selector, channel, key);
 			log.error("服务器端重置连接");
 			this.channelReadListener.fail();
@@ -277,18 +270,35 @@ public class ReadWriteHandler implements Runnable {
 		void fail();
 	}
 
-	public void connect(ExecutorService es) {
-		es.submit(this);
-	}
-
-	@Override
-	public void run() {
+	@SuppressWarnings("finally")
+	public Future<Integer> connect(ExecutorService es) {
+		Future<Integer> f = null;
 		try {
 			eventLoop.openChannel();
-			eventLoop.eventLoop();
-		} catch (IOException e) {
+			eventLoop.connect();
+			f = es.submit(this);
+		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			return f;
 		}
 	}
 
+
+	@Override
+	public Integer call() throws Exception {
+		try {
+			eventLoop.eventLoop();
+		} catch (IOException e) {
+			e.printStackTrace();
+			return 1;
+		}
+		return 0;
+	}
+
+	
+	public boolean isStoped(){
+		return this.eventLoop.getState() == SimpleEventLoop.STATE.stop;
+	}
+	
 }

@@ -25,7 +25,6 @@ public class ConnectHandler {
 
 	public boolean connect(Selector selector, SocketChannel channel,
 			InetSocketAddress socket, int timeOut) {
-		SimpleEventLoop.state = STATE.connecting;
 		// 提供简单超时检查
 		this.connecting = true;
 		new Timer().schedule(new TimerTask() {
@@ -63,7 +62,6 @@ public class ConnectHandler {
 			return false;
 		}
 		afterConnectListener.success();
-		SimpleEventLoop.state = STATE.connnected;
 		log.info(" 连接建立成功");
 		return true;
 

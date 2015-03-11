@@ -9,6 +9,14 @@ public final class PushServiceImpl extends PushSupport implements PushService {
 	
 	private Logger log = LoggerFactory.getLogger(PushServiceImpl.class);
 	
+	
+	
+	public PushServiceImpl() {
+		super();
+	}
+
+
+
 	@Override
 	public void receiveMsg(String msg) {
 		log.info(msg);

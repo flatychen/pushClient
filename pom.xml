@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>cn.flaty</groupId>
 	<artifactId>nettyPusherClient</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0</version>
 	<packaging>jar</packaging>
 	<properties>
 		<encoding>utf-8</encoding>
@@ -67,6 +67,7 @@
 	</dependencies>
 
 	<build>
+	
 		<plugins>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -89,6 +90,7 @@
 						</manifestEntries>
 					</archive>
 					<excludes>
+						<excludes>*.xml</excludes>
 						<excludes>*.properties</excludes>
 					</excludes>
 				</configuration>
@@ -107,6 +109,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.5.3</version>
 				<configuration>
 					<descriptors>
 						<descriptor>src/main/assembly/assembly.xml</descriptor>
