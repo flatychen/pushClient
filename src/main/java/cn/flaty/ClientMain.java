@@ -14,9 +14,6 @@ public class ClientMain {
 	private int threads;
 	private int connections;
 
-	// concurrent
-
-	private ExecutorService es;
 
 	/**
 	 * 启动客户端测试
@@ -39,8 +36,6 @@ public class ClientMain {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		es = Executors.newFixedThreadPool(threads);
 		return this;
 
 	}
@@ -48,7 +43,7 @@ public class ClientMain {
 	public void startUp() {
 		for (int i = 0; i < connections; i++) {
 			PushServiceImpl pushService = new PushServiceImpl();
-			pushService.connect(host, port, es);
+			pushService.connect(host, port, threads);
 		}
 	}
 

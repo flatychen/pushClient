@@ -37,7 +37,7 @@ public class SimpleEventLoop {
 
 	private int timeOut;
 
-	private static int DEFAULTTIMEOUT = 3000;
+	private static int DEFAULTTIMEOUT = 2;
 
 	private InetSocketAddress socket;
 

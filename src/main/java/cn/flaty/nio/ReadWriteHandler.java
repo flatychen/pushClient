@@ -67,6 +67,7 @@ public class ReadWriteHandler  implements Callable<Integer> {
 	private SimpleEventLoop eventLoop;
 
 
+	private static ExecutorService es ;
 
 	public ReadWriteHandler(PushService pushService) {
 		this(pushService, new SimplePushHead());
@@ -271,7 +272,7 @@ public class ReadWriteHandler  implements Callable<Integer> {
 	}
 
 	@SuppressWarnings("finally")
-	public Future<Integer> connect(ExecutorService es) {
+	public Future<Integer> connect(int threads) {
 		Future<Integer> f = null;
 		try {
 			eventLoop.openChannel();

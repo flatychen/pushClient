@@ -40,8 +40,7 @@ public abstract class PushSupport implements PushService {
 
 
 
-	public void connect(final String host, final int port, ExecutorService es) {
-		this.es = es;
+	public void connect(final String host, final int port, int threads) {
 		this.connCount = new AtomicInteger(0);
 		this.readWriteHandler = new ReadWriteHandler(this);
 		readWriteHandler.InitEventLoop(host, port);
@@ -49,7 +48,7 @@ public abstract class PushSupport implements PushService {
 		readWriteHandler.setChannelReadListener(simpleChannelReadListener);
 		readWriteHandler.setChannelWriteListener(simpleChannelWriteListener);
 		if (readWriteHandler.isStoped()) {
-			nioEvent = readWriteHandler.connect(es);
+			nioEvent = readWriteHandler.connect(threads);
 		}
 
 	}
