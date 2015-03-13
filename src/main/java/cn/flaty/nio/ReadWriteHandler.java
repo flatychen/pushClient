@@ -10,6 +10,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
@@ -67,7 +68,7 @@ public class ReadWriteHandler  implements Callable<Integer> {
 	private SimpleEventLoop eventLoop;
 
 
-	private static ExecutorService es ;
+	private static volatile ExecutorService es ;
 
 	public ReadWriteHandler(PushService pushService) {
 		this(pushService, new SimplePushHead());
@@ -273,6 +274,7 @@ public class ReadWriteHandler  implements Callable<Integer> {
 
 	@SuppressWarnings("finally")
 	public Future<Integer> connect(int threads) {
+		prepareEs(threads);
 		Future<Integer> f = null;
 		try {
 			eventLoop.openChannel();
@@ -284,6 +286,16 @@ public class ReadWriteHandler  implements Callable<Integer> {
 			return f;
 		}
 	}
+	
+	private void prepareEs(int threads) {
+		if(es == null){
+			synchronized (ReadWriteHandler.class) {
+				es = Executors.newFixedThreadPool(threads);
+			}
+		}
+		
+	}
+
 
 
 	@Override
