@@ -285,6 +285,16 @@ public class ReadWriteHandler  implements Callable<Integer> {
 			return f;
 		}
 	}
+	
+	private void prepareEs(int threads) {
+		if(es == null){
+			synchronized (ReadWriteHandler.class) {
+				es = Executors.newFixedThreadPool(threads);
+			}
+		}
+		
+	}
+
 
 	
 	private void initExecuteService(int threads){
