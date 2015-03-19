@@ -3,11 +3,13 @@ package cn.flaty;
 import java.io.IOException;
 import java.util.Properties;
 
+import cn.flaty.bio.SingleThreadSocketIO;
+import cn.flaty.bio.SocketIO;
 import cn.flaty.core.PushServiceImpl;
 
 public class ClientMain {
 
-	private String host;
+	private String server;
 	private int port;
 	private int threads;
 	private int connections;
@@ -27,7 +29,7 @@ public class ClientMain {
 		try {
 			p.load(this.getClass().getClassLoader()
 					.getResourceAsStream("client.properties"));
-			host = p.getProperty("local.host");
+			server = p.getProperty("local.server");
 			port = Integer.parseInt(p.getProperty("local.port"));
 			threads = Integer.parseInt(p.getProperty("local.threads"));
 			connections = threads;
@@ -40,8 +42,7 @@ public class ClientMain {
 
 	public void startUp() {
 		for (int i = 0; i < connections; i++) {
-			PushServiceImpl pushService = new PushServiceImpl();
-			pushService.connect(host, port, threads);
+			SocketIO boot = new SingleThreadSocketIO(server, port);
 		}
 	}
 

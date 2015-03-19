@@ -11,6 +11,22 @@ public  class SimplePushHead implements FrameHead {
 	public final int HEAD_LENGTH_BYTES = 4;
 
 	
+	private static volatile FrameHead frameHead= null;
+	
+	private SimplePushHead(){}
+	
+	
+	public static FrameHead getInstance(){
+		if(frameHead == null){
+			synchronized (SimplePushHead.class) {
+				frameHead = new SimplePushHead();
+			}
+		}
+		return frameHead;
+	}
+	
+	
+	
 	@Override
 	public int byteLength() {
 		return FRAME_LENGTH_BYTES;
