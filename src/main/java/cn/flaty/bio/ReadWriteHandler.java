@@ -29,16 +29,17 @@ public class ReadWriteHandler {
 	}
 
 	public void init() {
-		
 	}
 
 	
-	private void receive(String msg) throws IOException{
-		os.write(msg.getBytes());
+	private void receive() throws IOException{
+		byte b[] = new byte[1024];
+		is.read(b);
+		socketCallBack.onReceice(b);
 	}
 	
 	
-	public void send(String msg) throws IOException{
+   protected void send(String msg) throws IOException{
 		if(StringUtils.isBlank(msg)){
 			throw new IOException("发送消息不能为空");
 		}

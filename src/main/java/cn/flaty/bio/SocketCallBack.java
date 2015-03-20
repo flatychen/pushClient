@@ -8,7 +8,7 @@ public interface SocketCallBack {
 
 	void onConnect();
 
-	void onReceice();
+	void onReceice(byte[] b);
 
 	void disConnect();
 }

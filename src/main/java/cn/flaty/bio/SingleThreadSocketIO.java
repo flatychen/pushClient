@@ -40,11 +40,10 @@ public class SingleThreadSocketIO implements SocketIO {
 	
 	@Override
 	public void connect(SocketCallBack callBack){
-		
-		AssertUtils.notNull(callBack," callBack对象不能为空  ");
+		AssertUtils.notNull(callBack,"callBack不能为空 ");
 		this.socketCallBack = callBack;
-		
 		try {
+			socket = new Socket();
 			socket.connect(socketAddress, timeOut);
 		} catch (IOException e) {
 			callBack.onError(e);
@@ -82,7 +81,9 @@ public class SingleThreadSocketIO implements SocketIO {
 	@Override
 	public void close(){
 		try {
-			this.socket.close();
+			if(socket != null){
+				this.socket.close();
+			}
 		} catch (IOException e) {
 			socketCallBack.onError(e);
 		}

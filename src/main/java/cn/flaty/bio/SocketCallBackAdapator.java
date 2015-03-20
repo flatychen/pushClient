@@ -14,7 +14,7 @@ public class SocketCallBackAdapator  implements SocketCallBack{
 	}
 
 	@Override
-	public void onReceice() {
+	public void onReceice(byte b[]) {
 		
 	}
 
