@@ -19,7 +19,7 @@ public class ReadWriteHandler {
 	
 	private SocketCallBack socketCallBack;
 	
-	private Logger log = LoggerFactory.getLogger(ReadWriteHandler.class);
+	private static Logger log = LoggerFactory.getLogger(ReadWriteHandler.class);
 
 	public ReadWriteHandler(InputStream is, OutputStream os,SocketCallBack scb) {
 		super();
@@ -49,6 +49,7 @@ public class ReadWriteHandler {
 
 	private void writeToSocket(SimplePushOutFrame frame) {
 		try {
+//			os.write("test".getBytes());
 			os.write(frame.getLength());
 			os.write(frame.getHead());
 			os.write(frame.getBody());

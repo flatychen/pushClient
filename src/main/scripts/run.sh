@@ -1,2 +1,2 @@
 #! /bin/sh
-java -jar ./lib/nettyPusherClient-1.0.jar
+java -jar ./lib/pusherClientBio-1.0.jar

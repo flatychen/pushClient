@@ -12,11 +12,12 @@ import cn.flaty.utils.AssertUtils;
 
 public class SingleThreadSocketIO implements SocketIO {
 	
-	private Logger log = LoggerFactory.getLogger(SingleThreadSocketIO.class);
+	
+	private static Logger log = LoggerFactory.getLogger(SingleThreadSocketIO.class);
 	
 	private SocketAddress socketAddress;
 
-	private static int DEFAULTTIMEOUT = 3000;
+	private static int DEFAULTTIMEOUT = 0;
 	
 	
 	private SocketCallBack socketCallBack;
@@ -24,6 +25,9 @@ public class SingleThreadSocketIO implements SocketIO {
 	private int timeOut;
 	
 	private Socket socket;
+	
+	
+	
 	
 	private ReadWriteHandler readWriteHandler;
 	
@@ -49,7 +53,8 @@ public class SingleThreadSocketIO implements SocketIO {
 			callBack.onError(e);
 			return ;
 		}
-		socketCallBack.onConnect();
+		
+		socketCallBack.onConnect(socketAddress);
 		
 		try {
 			readWriteHandler = new ReadWriteHandler(socket.getInputStream(), socket.getOutputStream(),callBack);
@@ -87,8 +92,10 @@ public class SingleThreadSocketIO implements SocketIO {
 		} catch (IOException e) {
 			socketCallBack.onError(e);
 		}
-		socketCallBack.disConnect();
+		socketCallBack.disConnect(socketAddress);
 	}
+	
+	
 	
 	
 	

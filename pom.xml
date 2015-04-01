@@ -2,22 +2,28 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>cn.flaty</groupId>
-	<artifactId>nettyPusherClient</artifactId>
+	<artifactId>pusherClientBio</artifactId>
 	<version>1.0</version>
 	<packaging>jar</packaging>
 	<properties>
 		<encoding>utf-8</encoding>
-		<jdk>1.6</jdk>
+		
+		<!--  mainClass -->
 		<mainClass>cn.flaty.ClientMain</mainClass>
+		
+		
+		<jdk>1.6</jdk>
 		<maven.compiler.source>${jdk}</maven.compiler.source>
 		<maven.compiler.target>${jdk}</maven.compiler.target>
 		<maven.compiler.compilerVersion>${jdk}</maven.compiler.compilerVersion>
+		
+		
+		<!--  dependencies version -->
+		
 		<!-- commons -->
 		<!-- logs -->
 		<org.slf4j-version>1.6.4</org.slf4j-version>
 		<log4j-version>1.2.14</log4j-version>
-		<!-- spring -->
-		<org.springframework-version>3.2.8.RELEASE</org.springframework-version>
 		<!-- test -->
 		<junit-version>4.8.2</junit-version>
 	</properties>
@@ -31,12 +37,6 @@
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-log4j12</artifactId>
-			<version>${org.slf4j-version}</version>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>jcl-over-slf4j</artifactId>
 			<version>${org.slf4j-version}</version>
 			<scope>runtime</scope>
 		</dependency>
