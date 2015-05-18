@@ -95,7 +95,9 @@ public class SimpleEventLoop {
 				keys.remove();
 
 				if (key.isValid()) {
-
+					
+					log.info("{}",(channel.socket()));
+					
 					// 可读事件
 					if (key.isReadable()) {
 

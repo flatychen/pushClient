@@ -2,8 +2,6 @@ package cn.flaty;
 
 import java.io.IOException;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import cn.flaty.core.PushServiceImpl;
 
@@ -32,7 +30,7 @@ public class ClientMain {
 			host = p.getProperty("local.host");
 			port = Integer.parseInt(p.getProperty("local.port"));
 			threads = Integer.parseInt(p.getProperty("local.threads"));
-			connections = Integer.parseInt(p.getProperty("local.connections"));
+			connections = threads;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

@@ -3,7 +3,6 @@ package cn.flaty.nio;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -68,7 +67,7 @@ public class ReadWriteHandler  implements Callable<Integer> {
 	private SimpleEventLoop eventLoop;
 
 
-	private static volatile ExecutorService es ;
+	private static  volatile ExecutorService es ;
 
 	public ReadWriteHandler(PushService pushService) {
 		this(pushService, new SimplePushHead());
@@ -274,7 +273,7 @@ public class ReadWriteHandler  implements Callable<Integer> {
 
 	@SuppressWarnings("finally")
 	public Future<Integer> connect(int threads) {
-		prepareEs(threads);
+		initExecuteService(threads);
 		Future<Integer> f = null;
 		try {
 			eventLoop.openChannel();
@@ -297,10 +296,20 @@ public class ReadWriteHandler  implements Callable<Integer> {
 	}
 
 
+	
+	private void initExecuteService(int threads){
+		if(es == null){
+			synchronized (ReadWriteHandler.class) {
+				es = Executors.newFixedThreadPool(threads);
+			}
+		}
+	}
+	
 
 	@Override
 	public Integer call() throws Exception {
 		try {
+			Thread.currentThread().setName("simpleEventLoop");
 			eventLoop.eventLoop();
 		} catch (IOException e) {
 			e.printStackTrace();
