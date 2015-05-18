@@ -30,7 +30,7 @@ public class ClientMain {
 			host = p.getProperty("local.host");
 			port = Integer.parseInt(p.getProperty("local.port"));
 			threads = Integer.parseInt(p.getProperty("local.threads"));
-			connections = threads;
+			connections = Integer.parseInt(p.getProperty("local.connections"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
